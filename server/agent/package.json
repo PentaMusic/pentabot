@@ -4,7 +4,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start:agent": "node index.js",
+    "start:executor": "cd ../executor && node index.js",
+    "start:all": "concurrently \"npm run start:agent\" \"npm run start:executor\""
   },
   "keywords": [],
   "author": "",
@@ -18,6 +20,10 @@
     "@types/express": "^5.0.3",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }
