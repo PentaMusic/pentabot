@@ -12,12 +12,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #0f0f0f;
   color: #ffffff;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
 .app {
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -350,7 +350,7 @@ body {
   .chat-container {
     border-radius: 0;
     border: none;
-    height: 100vh;
+    height: 100dvh;
     max-height: none;
   }
   
