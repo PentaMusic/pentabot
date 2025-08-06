@@ -11,22 +11,22 @@ backend:
     EXECUTOR_URL: ${{backend.functions.executor.url}}
   functions:
     - name: agent
-      path: ./agent
+      path: agent
       entry: index.js
       type: httpServer
 
     - name: executor
-      path: ./executor
+      path: executor
       entry: index.js
       type: httpServer
       maxConcurrentRequestsPerInstance: 1
 
 frontend:
-  environment:
-    VITE_API_URL: ${{backend.functions.agent.url}}
   path: client
   publish: dist
-  script:
+  scripts:
     build: npm run build
-    deploy: npm install
+    start: npm run dev
+  environment:
+    VITE_API_URL: ${{backend.functions.agent.url}}
   subdomain: amazing-coffee

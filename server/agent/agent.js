@@ -6,10 +6,16 @@ import { z } from "zod";
 
 const weatherTool = tool(
   async (city) => {
-    // const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${process.env.OPENWEATHER_API_KEY}`);
-    // const data = await response.json();
-    // return data;
-    return "It's 25 degrees and sunny.";
+    // console.log("I should get the weather for", city);
+    // console.log(city);
+    const WEATHER_KEY = "adca3d2cfec04ad191155040250608"
+    const response = await fetch(
+      `https://api.weatherapi.com/v1/current.json?key=${WEATHER_KEY}&q=${city}&aqi=yes&lang=ko`
+    );
+    const data = await response.json();
+    // console.log("Weather data:", data);
+    return data;
+    // return "It's 25 degrees and sunny.";
   },
   {
     name: "weather",
@@ -20,16 +26,14 @@ const weatherTool = tool(
   }
 );
 
-
-
 const jsExecutor = tool(
   async ({ code }) => {
     // console.log("I should run the following code");
     // console.log('--------------');
     const response = await fetch(process.env.EXECUTOR_URL, {
-      method: 'POST',
-      headers: {'Content-Type':"application/json"},
-      body: JSON.stringify({code})
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
     });
     // console.log('---------------');
     return response.json();
@@ -49,7 +53,6 @@ const jsExecutor = tool(
 );
 const llm = new ChatAnthropic({
   model: "claude-3-5-sonnet-latest",
-  // temperature: 0.6,
 });
 
 const checkpointSaver = new MemorySaver();

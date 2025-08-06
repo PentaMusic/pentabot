@@ -52,9 +52,21 @@ const App: React.FC = () => {
     setInputValue('');
     setIsLoading(true);
 
+    // Create placeholder AI message for streaming
+    const aiMessageId = (Date.now() + 1).toString();
+    const aiMessage: Message = {
+      id: aiMessageId,
+      content: '',
+      isUser: false,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, aiMessage]);
+
     try {
       const apiUrl = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${apiUrl}/generate`, {
+      
+      const response = await fetch(`${apiUrl}/generate-stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,37 +81,63 @@ const App: React.FC = () => {
         throw new Error('Failed to get response');
       }
 
-      const aiResponse = await response.text();
-      
-      // 디버깅용 - API 응답 확인
-      console.log('API Response:', JSON.stringify(aiResponse));
-      
-      // 다양한 줄바꿈 형태를 실제 줄바꿈으로 변환하고 시작/끝 따옴표 제거
-      const formattedResponse = aiResponse
-        .replace(/^"|"$/g, '')  // 시작과 끝의 따옴표 제거
-        .replace(/\\n/g, '\n')  // \\n을 \n으로
-        .replace(/\r\n/g, '\n') // \r\n을 \n으로
-        .replace(/\r/g, '\n');  // \r을 \n으로
-      
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: formattedResponse,
-        isUser: false,
-        timestamp: new Date(),
-      };
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
 
-      setMessages(prev => [...prev, aiMessage]);
+      if (reader) {
+        let buffer = '';
+        let isFirstChunk = true;
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          buffer += chunk;
+          
+          // Turn off loading as soon as we start receiving data
+          if (isFirstChunk) {
+            setIsLoading(false);
+            isFirstChunk = false;
+          }
+          
+          // Parse data lines
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep incomplete line in buffer
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.content) {
+                  // Update the AI message with streamed content
+                  setMessages(prev => 
+                    prev.map(msg => 
+                      msg.id === aiMessageId 
+                        ? { ...msg, content: data.content }
+                        : msg
+                    )
+                  );
+                }
+              } catch {
+                console.warn('Failed to parse streaming data:', line);
+              }
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error('Error sending message:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: 'Sorry, something went wrong. Please try again.',
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === aiMessageId 
+            ? { ...msg, content: 'Sorry, something went wrong. Please try again.' }
+            : msg
+        )
+      );
     } finally {
-      setIsLoading(false);
+      // Loading state is already handled in the streaming logic
     }
   };
 
@@ -171,12 +209,16 @@ const App: React.FC = () => {
                   className={`message ${message.isUser ? 'user-message' : 'ai-message'}`}
                 >
                   <div className="message-content">
-                    {message.content.split('\\n').map((line, index, array) => (
-                      <React.Fragment key={index}>
-                        {line}
-                        {index < array.length - 1 && <br />}
-                      </React.Fragment>
-                    ))}
+                    {message.content ? (
+                      message.content.split('\\n').map((line, index, array) => (
+                        <React.Fragment key={index}>
+                          {line}
+                          {index < array.length - 1 && <br />}
+                        </React.Fragment>
+                      ))
+                    ) : !message.isUser ? (
+                      <LoadingDots />
+                    ) : null}
                   </div>
                   <div className="message-time">
                     {message.timestamp.toLocaleTimeString([], { 
@@ -186,13 +228,6 @@ const App: React.FC = () => {
                   </div>
                 </div>
               ))}
-              {isLoading && (
-                <div className="message ai-message">
-                  <div className="message-content">
-                    <LoadingDots />
-                  </div>
-                </div>
-              )}
               <div ref={messagesEndRef} />
             </div>
           )}
