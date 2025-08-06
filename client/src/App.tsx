@@ -9,6 +9,7 @@ interface Message {
 }
 
 const App: React.FC = () => {
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +38,18 @@ const App: React.FC = () => {
   useEffect(() => {
     adjustTextareaHeight();
   }, [inputValue]);
+
+  // Focus textarea on mount
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  // Focus textarea when loading ends (AI response complete)
+  useEffect(() => {
+    if (!isLoading) {
+      textareaRef.current?.focus();
+    }
+  }, [isLoading]);
 
   const sendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -152,6 +165,9 @@ const App: React.FC = () => {
     setMessages([]);
     setInputValue('');
     setThreadId(Math.floor(Math.random() * 1000000));
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
   };
 
   const SendIcon = () => (
@@ -190,7 +206,6 @@ const App: React.FC = () => {
             <span>New Chat</span>
           </button>
         </header>
-        
         <div className="messages-container">
           {messages.length === 0 ? (
             <div className="empty-state">
@@ -232,7 +247,6 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
-
         <div className="input-container">
           <div className="input-wrapper">
             <textarea
