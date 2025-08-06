@@ -7,19 +7,26 @@ backend:
   language:
     name: js
     packageManager: npm
+  environment:
+    EXECUTOR_URL: ${{backend.functions.executor.url}}
   functions:
     - name: agent
-      path: agent
+      path: ./agent
       entry: index.js
       type: httpServer
 
     - name: executor
-      path: executor
+      path: ./executor
       entry: index.js
       type: httpServer
       maxConcurrentRequestsPerInstance: 1
 
 frontend:
+  environment:
+    VITE_API_URL: ${{backend.functions.agent.url}}
   path: client
   publish: dist
+  script:
+    build: npm run build
+    deply: npm install
   subdomain: amazing-coffee
