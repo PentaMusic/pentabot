@@ -27,7 +27,10 @@ const App: React.FC = () => {
   const adjustTextareaHeight = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      
+      // 모바일에서는 더 작은 최대 높이 사용
+      const maxHeight = window.innerWidth <= 768 ? 100 : 120;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`;
     }
   };
 
@@ -100,7 +103,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -201,7 +204,7 @@ const App: React.FC = () => {
               ref={textareaRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
               placeholder="Type your message..."
               className="message-input"
               disabled={isLoading}
