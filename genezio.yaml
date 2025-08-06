@@ -28,5 +28,5 @@ frontend:
   publish: dist
   script:
     build: npm run build
-    deply: npm install
+    deploy: npm install
   subdomain: amazing-coffee
