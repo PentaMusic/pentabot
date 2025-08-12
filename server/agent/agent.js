@@ -1,8 +1,8 @@
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { tool } from '@langchain/core/tools';
-import { MemorySaver } from '@langchain/langgraph';
 import { z } from 'zod';
+import { checkpointSaver } from './memory.js';
 
 const weatherTool = tool(
     async (city) => {
@@ -53,8 +53,6 @@ const jsExecutor = tool(
 const llm = new ChatAnthropic({
     model: 'claude-3-5-sonnet-latest',
 });
-
-const checkpointSaver = new MemorySaver();
 
 export const agent = createReactAgent({
     llm,

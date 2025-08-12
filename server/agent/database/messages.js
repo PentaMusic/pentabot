@@ -1,10 +1,10 @@
-import supabase from './supabase.js';
+import { supabaseService } from './supabase.js';
 import { touchThread } from './threads.js';
 
 // 새 메시지 저장
 export const saveMessage = async (threadId, userId, role, content, metadata = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseService
             .from('messages')
             .insert({
                 thread_id: threadId,
@@ -30,7 +30,7 @@ export const saveMessage = async (threadId, userId, role, content, metadata = {}
 // Thread의 메시지 목록 조회
 export const getThreadMessages = async (threadId, userId, limit = 50, offset = 0) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseService
             .from('messages')
             .select('*')
             .eq('thread_id', threadId)
@@ -49,7 +49,7 @@ export const getThreadMessages = async (threadId, userId, limit = 50, offset = 0
 // 특정 메시지 조회
 export const getMessage = async (messageId, userId) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseService
             .from('messages')
             .select('*')
             .eq('id', messageId)
@@ -72,7 +72,7 @@ export const updateMessage = async (messageId, userId, content, metadata = null)
             updateData.metadata = metadata;
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseService
             .from('messages')
             .update(updateData)
             .eq('id', messageId)
@@ -91,7 +91,7 @@ export const updateMessage = async (messageId, userId, content, metadata = null)
 // 메시지 삭제
 export const deleteMessage = async (messageId, userId) => {
     try {
-        const { error } = await supabase
+        const { error } = await supabaseService
             .from('messages')
             .delete()
             .eq('id', messageId)
@@ -108,7 +108,7 @@ export const deleteMessage = async (messageId, userId) => {
 // 사용자의 메시지 검색
 export const searchMessages = async (userId, query, limit = 20) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseService
             .from('messages')
             .select(`
                 *,
@@ -135,7 +135,7 @@ export const searchMessages = async (userId, query, limit = 20) => {
 // Thread의 메시지 개수 조회
 export const getMessageCount = async (threadId, userId) => {
     try {
-        const { count, error } = await supabase
+        const { count, error } = await supabaseService
             .from('messages')
             .select('*', { count: 'exact', head: true })
             .eq('thread_id', threadId)

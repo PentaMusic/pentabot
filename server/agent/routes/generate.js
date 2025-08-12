@@ -1,8 +1,9 @@
 import express from 'express';
-import { agent } from "../agent-anthropic.js";
+import { agent } from "../agent.js";
 import { saveMessage } from "../database/messages.js";
 import { recordUsageWithCostCalculation } from "../database/usage.js";
 import { requireAuth } from "../middleware/auth.js";
+import { HumanMessage } from "@langchain/core/messages";
 
 const router = express.Router();
 
@@ -34,7 +35,7 @@ router.post("/", requireAuth, async (req, res) => {
 
     // 2. AI 응답 생성
     const result = await agent.invoke(
-      { messages: [{ role: "user", content: prompt }] },
+      { messages: [new HumanMessage(prompt)] },
       { configurable: { thread_id } }
     );
     
@@ -150,7 +151,7 @@ router.post("/stream", requireAuth, async (req, res) => {
 
     // 2. AI 응답 생성
     const result = await agent.invoke(
-      { messages: [{ role: "user", content: prompt }] },
+      { messages: [new HumanMessage(prompt)] },
       { configurable: { thread_id } }
     );
     
