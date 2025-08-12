@@ -1,0 +1,53 @@
+.main-layout {
+  display: flex;
+  height: 100vh;
+  background: #fff;
+  position: relative;
+}
+
+.sidebar-container {
+  width: 260px;
+  background: #f7f7f8;
+  border-right: 1px solid #e5e5e5;
+  flex-shrink: 0;
+  transition: width 0.2s ease;
+  overflow: hidden;
+}
+
+.sidebar-container.closed {
+  width: 0;
+}
+
+.chat-container-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .sidebar-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1000;
+    width: 280px;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .sidebar-container.open {
+    transform: translateX(0);
+  }
+  
+  .sidebar-container.closed {
+    width: 280px;
+    transform: translateX(-100%);
+  }
+
+  .chat-container-main {
+    width: 100%;
+  }
+}

@@ -1,62 +1,61 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { agent } from "./agent-anthropic.js";
+
+// 라우터 imports
+import authRoutes from "./routes/auth.js";
+import threadRoutes from "./routes/threads.js";
+import messageRoutes from "./routes/messages.js";
+import usageRoutes from "./routes/usage.js";
+import generateRoutes from "./routes/generate.js";
+
 const app = express();
 const port = 3001;
 
+// 미들웨어 설정
 app.use(express.json());
 app.use(cors({ origin: "*" }));
 
+// 기본 엔드포인트
 app.get("/", (req, res) => {
-  res.send("Hello World");
-});
-
-app.post("/generate", async (req, res) => {
-  const { prompt, thread_id } = req.body;
-  const result = await agent.invoke(
-    { messages: [{ role: "user", content: prompt }] },
-    { configurable: { thread_id } }
-  );
-  res.json(result.messages.at(-1)?.content);
-});
-
-app.post("/generate-stream", async (req, res) => {
-  const { prompt, thread_id } = req.body;
-  
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.setHeader('Transfer-Encoding', 'chunked');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-
-  try {
-    // Get the full response first
-    const result = await agent.invoke(
-      { messages: [{ role: "user", content: prompt }] },
-      { configurable: { thread_id } }
-    );
-    
-    const fullContent = result.messages.at(-1)?.content || '';
-    
-    // Stream the content character by character
-    const words = fullContent.split(' ');
-    
-    for (let i = 0; i < words.length; i++) {
-      const partialContent = words.slice(0, i + 1).join(' ');
-      res.write(`data: ${JSON.stringify({ content: partialContent })}\n\n`);
-      
-      // Add a small delay between words for streaming effect
-      await new Promise(resolve => setTimeout(resolve, 50));
+  res.json({ 
+    message: "Pentabot API Server",
+    version: "1.0.0",
+    endpoints: {
+      auth: "/auth/*",
+      threads: "/threads/*", 
+      messages: "/messages/*",
+      usage: "/usage/*",
+      generate: "/generate/*"
     }
-    
-    res.end();
-  } catch (error) {
-    console.error('Streaming error:', error);
-    res.status(500).write('Error occurred during streaming');
-    res.end();
-  }
+  });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+// 라우터 등록
+app.use("/auth", authRoutes);
+app.use("/threads", threadRoutes);
+app.use("/messages", messageRoutes);
+app.use("/usage", usageRoutes);
+app.use("/generate", generateRoutes);
+
+// 에러 핸들링 미들웨어
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
+
+// 404 핸들러
+app.use((req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
+});
+
+// Export the app for Genezio
+export default app;
+
+// Only start server if not in Genezio environment
+if (!process.env.GENEZIO_TOKEN) {
+  app.listen(port, () => {
+    console.log(`🚀 Pentabot API Server running on port ${port}`);
+    console.log(`📖 API Documentation available at http://localhost:${port}`);
+  });
+}

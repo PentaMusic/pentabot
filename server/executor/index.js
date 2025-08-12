@@ -36,6 +36,12 @@ app.post("/", async (req, res) => {
   res.json(result);
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// Export the app for Genezio
+export default app;
+
+// Only start server if not in Genezio environment
+if (!process.env.GENEZIO_TOKEN) {
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
