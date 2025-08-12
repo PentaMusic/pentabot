@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { agent } from "./agent.js";
+import { agent } from "./agent-anthropic.js";
 const app = express();
 const port = 3001;
 
