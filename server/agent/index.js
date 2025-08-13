@@ -1,4 +1,50 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from parent directory (server/.env)
+dotenv.config({ path: path.join(__dirname, "../.env") });
+
+// Debug: Check if environment variables are loaded
+console.log("Environment variables loaded:");
+console.log("EXECUTOR_URL:", process.env.EXECUTOR_URL || "NOT SET");
+console.log("NODE_ENV:", process.env.NODE_ENV || "development");
+
+// For Genezio local development, handle executor URL properly
+if (!process.env.EXECUTOR_URL) {
+    if (isGenezio) {
+        console.log("⚠️  EXECUTOR_URL not set in Genezio environment");
+        console.log("   This should be automatically set by Genezio from genezio.yaml");
+        console.log("   Checking if executor function is available...");
+    } else {
+        console.log("⚠️  EXECUTOR_URL not set, using localhost:3000 for local development");
+        process.env.EXECUTOR_URL = "http://localhost:3000";
+    }
+}
+
+// Check executor service health on startup
+async function checkExecutorHealth() {
+    const executorUrl = process.env.EXECUTOR_URL || "http://localhost:3000";
+    try {
+        const response = await fetch(`${executorUrl}/health`);
+        if (response.ok) {
+            const health = await response.json();
+            console.log("✅ Executor service is healthy:", health);
+        } else {
+            console.log("⚠️ Executor service health check failed:", response.status);
+        }
+    } catch (error) {
+        console.log("❌ Executor service is not accessible:", error.message);
+        console.log("   Make sure the executor service is running on port 3000");
+    }
+}
+
+// Check executor health after a short delay
+setTimeout(checkExecutorHealth, 2000);
+
 import express from "express";
 import cors from "cors";
 

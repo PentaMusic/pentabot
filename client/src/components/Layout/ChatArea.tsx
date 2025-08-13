@@ -32,6 +32,118 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Simple markdown parser
+  const parseMarkdown = (text: string) => {
+    return text
+      .split('\n')
+      .map((line, lineIndex) => {
+        // Handle code blocks
+        if (line.startsWith('```')) {
+          return { type: 'code-delimiter', content: line, lineIndex };
+        }
+        // Handle headers
+        if (line.startsWith('### ')) {
+          return { type: 'h3', content: line.slice(4), lineIndex };
+        }
+        if (line.startsWith('## ')) {
+          return { type: 'h2', content: line.slice(3), lineIndex };
+        }
+        if (line.startsWith('# ')) {
+          return { type: 'h1', content: line.slice(2), lineIndex };
+        }
+        // Handle bullet points
+        if (line.match(/^[-*+] /)) {
+          return { type: 'list-item', content: line.slice(2), lineIndex };
+        }
+        // Handle numbered lists
+        if (line.match(/^\d+\. /)) {
+          return { type: 'numbered-item', content: line.replace(/^\d+\. /, ''), lineIndex };
+        }
+        // Regular text
+        return { type: 'text', content: line, lineIndex };
+      });
+  };
+
+  const formatInlineMarkdown = (text: string) => {
+    // Handle bold text **text**
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Handle italic text *text*
+    text = text.replace(/(?<!\*)\*(?!\*)([^*]+)\*(?!\*)/g, '<em>$1</em>');
+    // Handle inline code `code`
+    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return text;
+  };
+
+  const renderMarkdownContent = (content: string) => {
+    const lines = parseMarkdown(content);
+    let inCodeBlock = false;
+    let codeBlockContent: string[] = [];
+    const elements: JSX.Element[] = [];
+
+    lines.forEach((line, index) => {
+      if (line.type === 'code-delimiter') {
+        if (inCodeBlock) {
+          // End code block
+          elements.push(
+            <pre key={`code-${index}`} className="code-block">
+              <code>{codeBlockContent.join('\n')}</code>
+            </pre>
+          );
+          codeBlockContent = [];
+          inCodeBlock = false;
+        } else {
+          // Start code block
+          inCodeBlock = true;
+        }
+        return;
+      }
+
+      if (inCodeBlock) {
+        codeBlockContent.push(line.content);
+        return;
+      }
+
+      switch (line.type) {
+        case 'h1':
+          elements.push(<h1 key={index} className="markdown-h1">{line.content}</h1>);
+          break;
+        case 'h2':
+          elements.push(<h2 key={index} className="markdown-h2">{line.content}</h2>);
+          break;
+        case 'h3':
+          elements.push(<h3 key={index} className="markdown-h3">{line.content}</h3>);
+          break;
+        case 'list-item':
+          elements.push(
+            <div key={index} className="markdown-list-item">
+              • {<span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(line.content) }} />}
+            </div>
+          );
+          break;
+        case 'numbered-item':
+          elements.push(
+            <div key={index} className="markdown-numbered-item">
+              {index + 1}. {<span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(line.content) }} />}
+            </div>
+          );
+          break;
+        case 'text':
+          if (line.content.trim()) {
+            elements.push(
+              <p key={index} className="markdown-text">
+                <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(line.content) }} />
+              </p>
+            );
+          } else {
+            elements.push(<br key={index} />);
+          }
+          break;
+      }
+    });
+
+    return elements;
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -368,12 +480,18 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 </div>
                 <div className="message-content">
                   {message.content ? (
-                    message.content.split('\\n').map((line, index, array) => (
-                      <React.Fragment key={index}>
-                        {line}
-                        {index < array.length - 1 && <br />}
-                      </React.Fragment>
-                    ))
+                    message.isUser ? (
+                      message.content.split('\n').map((line, index, array) => (
+                        <React.Fragment key={index}>
+                          {line}
+                          {index < array.length - 1 && <br />}
+                        </React.Fragment>
+                      ))
+                    ) : (
+                      <div className="markdown-content">
+                        {renderMarkdownContent(message.content)}
+                      </div>
+                    )
                   ) : !message.isUser ? (
                     <LoadingDots />
                   ) : null}

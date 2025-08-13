@@ -62,7 +62,7 @@ router.get("/:threadId", requireAuth, async (req, res) => {
   }
 });
 
-// Thread 제목 업데이트
+// Thread 제목 업데이트 (PUT - 전체 리소스 교체)
 router.put("/:threadId", requireAuth, async (req, res) => {
   const { threadId } = req.params;
   const { title } = req.body;
@@ -76,6 +76,32 @@ router.put("/:threadId", requireAuth, async (req, res) => {
   if (result.success) {
     res.json({ message: "Thread updated successfully", thread: result.thread });
   } else {
+    res.status(400).json({ error: result.error });
+  }
+});
+
+// Thread 제목 업데이트 (PATCH - 부분 업데이트)
+router.patch("/:threadId", requireAuth, async (req, res) => {
+  const { threadId } = req.params;
+  const { title } = req.body;
+  
+  if (!title) {
+    return res.status(400).json({ error: "Title is required" });
+  }
+
+  console.log('PATCH /threads/:threadId request:', {
+    threadId,
+    title,
+    userId: req.user.id
+  });
+
+  const result = await updateThreadTitle(threadId, req.user.id, title);
+  
+  if (result.success) {
+    console.log('Thread title updated successfully:', result.thread);
+    res.json({ message: "Thread updated successfully", thread: result.thread });
+  } else {
+    console.error('Failed to update thread title:', result.error);
     res.status(400).json({ error: result.error });
   }
 });

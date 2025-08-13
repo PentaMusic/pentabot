@@ -19,6 +19,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
+  isOpen,
   onToggle,
   onThreadSelect,
   onNewChat,
@@ -30,6 +31,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoadingThreads, setIsLoadingThreads] = useState(false);
+  const [hoveredThreadId, setHoveredThreadId] = useState<string | null>(null);
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Thread 목록을 가져오는 함수
   const fetchThreads = useCallback(async () => {
@@ -50,7 +55,15 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        setThreads(data.threads || []);
+        const threadsList = data.threads || [];
+        setThreads(threadsList);
+        
+        // 최근 사용한 스레드 자동 선택 (첫 번째가 가장 최근)
+        if (threadsList.length > 0 && !currentThreadId) {
+          const mostRecentThread = threadsList[0];
+          onThreadSelect(mostRecentThread.id);
+          onThreadCreated?.(mostRecentThread.id);
+        }
       } else {
         if (response.status === 401) {
           // 토큰 만료 - useAuth에서 자동 로그아웃 처리됨
@@ -66,7 +79,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     } finally {
       setIsLoadingThreads(false);
     }
-  }, [user, token]);
+  }, [user, token, currentThreadId, onThreadSelect, onThreadCreated]);
 
   // 새로운 thread 생성 함수
   const createNewThread = async () => {
@@ -107,6 +120,128 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  // Thread 삭제 함수
+  const deleteThread = async (threadId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!user || !token) return;
+
+    // 삭제 확인 대화상자
+    const confirmed = window.confirm('Are you sure you want to delete this conversation? This action cannot be undone.');
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${apiUrl}/threads/${threadId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        setThreads(prev => prev.filter(t => t.id !== threadId));
+        if (currentThreadId === threadId) {
+          onThreadSelect(threads[0]?.id || '');
+        }
+        console.log('Thread deleted successfully');
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to delete thread:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting thread:', error);
+    }
+  };
+
+  // Thread 이름 편집 시작
+  const startEditingThread = (thread: Thread, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingThreadId(thread.id);
+    setEditingTitle(thread.title);
+  };
+
+  // Thread 이름 편집 저장
+  const saveThreadTitle = async (threadId: string) => {
+    if (!user || !token || !editingTitle.trim()) {
+      setEditingThreadId(null);
+      return;
+    }
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${apiUrl}/threads/${threadId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: editingTitle.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        await response.json();
+        setThreads(prev => prev.map(t => 
+          t.id === threadId 
+            ? { ...t, title: editingTitle.trim() }
+            : t
+        ));
+        console.log('Thread title updated successfully');
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to update thread title:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        // 실패 시 원래 제목으로 복원
+        const originalThread = threads.find(t => t.id === threadId);
+        if (originalThread) {
+          setEditingTitle(originalThread.title);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating thread title:', error);
+      // 네트워크 에러 등의 경우 원래 제목으로 복원
+      const originalThread = threads.find(t => t.id === threadId);
+      if (originalThread) {
+        setEditingTitle(originalThread.title);
+      }
+    } finally {
+      setEditingThreadId(null);
+      setEditingTitle('');
+    }
+  };
+
+  // Thread 이름 편집 취소
+  const cancelEditing = () => {
+    setEditingThreadId(null);
+    setEditingTitle('');
+  };
+
+  // Thread 이름 편집 키 핸들러
+  const handleEditKeyDown = (e: React.KeyboardEvent, threadId: string) => {
+    if (e.key === 'Enter') {
+      saveThreadTitle(threadId);
+    } else if (e.key === 'Escape') {
+      cancelEditing();
+    }
+  };
+
+  // 검색된 스레드 필터링
+  const filteredThreads = threads.filter(thread =>
+    thread.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // 사용자 로그인 상태 변경시 threads 다시 가져오기
   useEffect(() => {
     fetchThreads();
@@ -123,23 +258,52 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const NewChatIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 5v14"/>
-      <path d="M5 12h14"/>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      <path d="M12 8v8"/>
+      <path d="M8 12h8"/>
     </svg>
   );
 
   const MenuIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <line x1="3" y1="12" x2="21" y2="12"/>
-      <line x1="3" y1="18" x2="21" y2="18"/>
+      <rect x="3" y="3" width="7" height="18" rx="1"/>
+      <rect x="14" y="3" width="7" height="18" rx="1"/>
+      <path d="m12 8-2 4 2 4"/>
+    </svg>
+  );
+
+  const CloseIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="18" height="18" rx="1"/>
+      <path d="m8 12 2-4 2 4"/>
     </svg>
   );
 
   const MessageIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  );
+
+  const TrashIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="3,6 5,6 21,6"/>
+      <path d="M19,6V20a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6M8,6V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
+    </svg>
+  );
+
+  const EditIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+  );
+
+  const SearchIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="11" cy="11" r="8"/>
+      <path d="m21 21-4.35-4.35"/>
     </svg>
   );
 
@@ -151,7 +315,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={onToggle}
           aria-label="Toggle sidebar"
         >
-          <MenuIcon />
+          {isOpen ? <CloseIcon /> : <MenuIcon />}
         </button>
         
         <button 
@@ -160,11 +324,25 @@ const Sidebar: React.FC<SidebarProps> = ({
           aria-label="Start new chat"
         >
           <NewChatIcon />
-          <span>New Chat</span>
         </button>
       </div>
 
       <div className="sidebar-content">
+        {user && (
+          <div className="search-container">
+            <div className="search-input-wrapper">
+              <SearchIcon />
+              <input
+                type="text"
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+            </div>
+          </div>
+        )}
+        
         <div className="threads-list">
           {!user ? (
             <div className="empty-threads">
@@ -185,25 +363,56 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <span>Loading conversations...</span>
               </div>
             </div>
-          ) : threads.length === 0 ? (
+          ) : filteredThreads.length === 0 ? (
             <div className="empty-threads">
               <div className="empty-message">
                 <MessageIcon />
-                <p>No conversations yet</p>
-                <span>Start a new chat to begin</span>
+                <p>{searchQuery ? 'No matching conversations' : 'No conversations yet'}</p>
+                <span>{searchQuery ? 'Try adjusting your search' : 'Start a new chat to begin'}</span>
               </div>
             </div>
           ) : (
-            threads.map((thread) => (
-              <button
+            filteredThreads.map((thread) => (
+              <div
                 key={thread.id}
                 className={`thread-item ${currentThreadId === thread.id ? 'active' : ''}`}
-                onClick={() => onThreadSelect(thread.id)}
-                title={thread.title}
+                onMouseEnter={() => setHoveredThreadId(thread.id)}
+                onMouseLeave={() => setHoveredThreadId(null)}
+                onClick={() => editingThreadId !== thread.id && onThreadSelect(thread.id)}
               >
                 <MessageIcon />
-                <span className="thread-title">{thread.title}</span>
-              </button>
+                {editingThreadId === thread.id ? (
+                  <input
+                    type="text"
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    onKeyDown={(e) => handleEditKeyDown(e, thread.id)}
+                    onBlur={() => saveThreadTitle(thread.id)}
+                    className="thread-title-input"
+                    autoFocus
+                  />
+                ) : (
+                  <span className="thread-title" title={thread.title}>{thread.title}</span>
+                )}
+                {hoveredThreadId === thread.id && editingThreadId !== thread.id && (
+                  <div className="thread-actions">
+                    <button
+                      className="edit-thread-btn"
+                      onClick={(e) => startEditingThread(thread, e)}
+                      aria-label="Edit thread name"
+                    >
+                      <EditIcon />
+                    </button>
+                    <button
+                      className="delete-thread-btn"
+                      onClick={(e) => deleteThread(thread.id, e)}
+                      aria-label="Delete thread"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
+                )}
+              </div>
             ))
           )}
         </div>

@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,9 +13,10 @@
 }
 
 .auth-modal {
-  background: #fff;
+  background: #171717;
+  border: 1px solid #2d2d2d;
   border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
   width: 100%;
   max-width: 400px;
   max-height: 90vh;
@@ -39,13 +40,13 @@
   background: none;
   border-radius: 6px;
   cursor: pointer;
-  color: #6b7280;
+  color: #8e8ea0;
   transition: all 0.2s ease;
 }
 
 .auth-modal-close:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: #2d2d2d;
+  color: #f7f7f8;
 }
 
 .auth-modal-content {
@@ -60,19 +61,19 @@
 .auth-header h2 {
   font-size: 24px;
   font-weight: 600;
-  color: #1f2937;
+  color: #f7f7f8;
   margin: 0 0 8px;
 }
 
 .auth-header p {
-  color: #6b7280;
+  color: #8e8ea0;
   margin: 0;
   font-size: 14px;
 }
 
 .auth-tabs {
   display: flex;
-  background: #f3f4f6;
+  background: #2d2d2d;
   border-radius: 8px;
   padding: 4px;
   margin-bottom: 24px;
@@ -83,7 +84,7 @@
   padding: 8px 16px;
   border: none;
   background: transparent;
-  color: #6b7280;
+  color: #8e8ea0;
   font-weight: 500;
   font-size: 14px;
   border-radius: 6px;
@@ -92,9 +93,9 @@
 }
 
 .auth-tab.active {
-  background: #fff;
-  color: #1f2937;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: #404040;
+  color: #f7f7f8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .auth-form {
@@ -112,33 +113,33 @@
 .form-group label {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #f7f7f8;
 }
 
 .form-group input {
   padding: 12px 16px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #404040;
   border-radius: 8px;
   font-size: 14px;
-  color: #1f2937;
-  background: #fff;
+  color: #f7f7f8;
+  background: #2d2d2d;
   transition: all 0.2s ease;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #10a37f;
+  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
 }
 
 .form-group input:disabled {
-  background: #f9fafb;
-  color: #9ca3af;
+  background: #1a1a1a;
+  color: #565869;
   cursor: not-allowed;
 }
 
 .form-group input::placeholder {
-  color: #9ca3af;
+  color: #8e8ea0;
 }
 
 .error-message {
@@ -146,10 +147,10 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: #2d1b1b;
+  border: 1px solid #5d2020;
   border-radius: 8px;
-  color: #dc2626;
+  color: #ef4444;
   font-size: 14px;
   margin-top: 8px;
 }
@@ -160,7 +161,7 @@
 
 .auth-submit-btn {
   padding: 12px 24px;
-  background: #3b82f6;
+  background: #10a37f;
   color: white;
   border: none;
   border-radius: 8px;
@@ -176,12 +177,12 @@
 }
 
 .auth-submit-btn:hover:not(:disabled) {
-  background: #2563eb;
+  background: #0f7a63;
   transform: translateY(-1px);
 }
 
 .auth-submit-btn:disabled {
-  background: #9ca3af;
+  background: #404040;
   cursor: not-allowed;
   transform: none;
 }
@@ -209,11 +210,11 @@
   text-align: center;
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #2d2d2d;
 }
 
 .auth-footer p {
-  color: #6b7280;
+  color: #8e8ea0;
   font-size: 14px;
   margin: 0;
 }
@@ -221,7 +222,7 @@
 .auth-link {
   background: none;
   border: none;
-  color: #3b82f6;
+  color: #10a37f;
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
@@ -230,8 +231,26 @@
 }
 
 .auth-link:hover {
-  color: #2563eb;
+  color: #0f7a63;
   text-decoration: underline;
+}
+
+/* 스크롤바 스타일링 */
+.auth-modal::-webkit-scrollbar {
+  width: 6px;
+}
+
+.auth-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.auth-modal::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 3px;
+}
+
+.auth-modal::-webkit-scrollbar-thumb:hover {
+  background: #565869;
 }
 
 /* 모바일 최적화 */

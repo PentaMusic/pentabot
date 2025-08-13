@@ -42,7 +42,7 @@ CREATE TYPE tool_type AS ENUM (
 -- Create usage_history table with tool type tracking
 CREATE TABLE public.usage_history (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,    -- !! 사용자 삭제 시에 이력은 살려두는 방법도 고려해야함
     thread_id UUID REFERENCES public.threads(id) ON DELETE CASCADE,
     message_id UUID REFERENCES public.messages(id) ON DELETE CASCADE,
     tool_type tool_type NOT NULL DEFAULT 'claude_chat',
@@ -153,6 +153,8 @@ SELECT
 FROM public.usage_history
 GROUP BY user_id, DATE_TRUNC('day', created_at)
 ORDER BY usage_date DESC;
+
+-- !! 사용량이 많으면 usage_date를 기준으로 인덱스 생성 필요
 
 -- Create checkpoints table for LangGraph memory persistence
 CREATE TABLE public.checkpoints (

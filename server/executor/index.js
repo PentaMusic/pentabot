@@ -30,10 +30,32 @@ const port = 3000;
 app.use(express.json());
 app.use(cors({ origin: "*" }));
 
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    service: "executor",
+    timestamp: new Date().toISOString(),
+    port: port
+  });
+});
+
 app.post("/", async (req, res) => {
   const { code } = req.body;
-  const result = await evalAndCaptureOutput(code);
-  res.json(result);
+  console.log("Executing code:", code);
+  
+  try {
+    const result = await evalAndCaptureOutput(code);
+    console.log("Execution result:", result);
+    res.json(result);
+  } catch (error) {
+    console.error("Execution error:", error);
+    res.status(500).json({ 
+      error: error.message,
+      stdout: "",
+      stderr: error.message
+    });
+  }
 });
 
 // Export the app for Genezio
