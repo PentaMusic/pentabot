@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import AuthModal from '../Auth/AuthModal';
+import { MenuIcon, SendIcon, WelcomeIcon, SignInIcon } from '../icons/Icons';
 import './ChatArea.css';
 
 interface Message {
@@ -8,6 +9,13 @@ interface Message {
   content: string;
   isUser: boolean;
   timestamp: Date;
+}
+
+interface ApiMessage {
+  id: string;
+  content: string;
+  role: string;
+  created_at: string;
 }
 
 interface ChatAreaProps {
@@ -20,7 +28,6 @@ interface ChatAreaProps {
 const ChatArea: React.FC<ChatAreaProps> = ({ 
   threadId, 
   onToggleSidebar, 
-  isSidebarOpen,
   onNewThreadCreated 
 }) => {
   const { user, token } = useAuth();
@@ -78,7 +85,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     const lines = parseMarkdown(content);
     let inCodeBlock = false;
     let codeBlockContent: string[] = [];
-    const elements: JSX.Element[] = [];
+    const elements: React.JSX.Element[] = [];
 
     lines.forEach((line, index) => {
       if (line.type === 'code-delimiter') {
@@ -172,7 +179,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        const threadMessages = data.messages.map((msg: any) => ({
+        const threadMessages = data.messages.map((msg: ApiMessage) => ({
           id: msg.id,
           content: msg.content,
           isUser: msg.role === 'user',
@@ -384,20 +391,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     }
   };
 
-  const MenuIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <line x1="3" y1="12" x2="21" y2="12"/>
-      <line x1="3" y1="18" x2="21" y2="18"/>
-    </svg>
-  );
 
-  const SendIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="m22 2-7 20-4-9-9-4z"/>
-      <path d="M22 2 11 13"/>
-    </svg>
-  );
 
   const LoadingDots = () => (
     <div className="loading-dots">
@@ -425,9 +419,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           <div className="empty-chat">
             <div className="welcome-message">
               <div className="welcome-icon">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
+                <WelcomeIcon />
               </div>
               {user ? (
                 <>
@@ -442,11 +434,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                     className="sign-in-welcome-btn"
                     onClick={() => setIsAuthModalOpen(true)}
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                      <polyline points="10,17 15,12 10,7"/>
-                      <line x1="15" y1="12" x2="3" y2="12"/>
-                    </svg>
+                    <SignInIcon />
                     Sign In to Chat
                   </button>
                 </>

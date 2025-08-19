@@ -1,12 +1,10 @@
-import supabase, { supabaseService } from './supabase.js';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseService } from './supabase.js';
 
 // 새 Thread 생성
 export const createThread = async (userId, title = 'New Chat') => {
     try {
-        console.log('Creating thread for user:', userId, 'with title:', title);
-        
-        console.log('Creating thread with supabaseService...');
+        // console.log('Creating thread for user:', userId, 'with title:', title);
+        // console.log('Creating thread with supabaseService...');
         const { data, error } = await supabaseService
             .from('threads')
             .insert({

@@ -74,7 +74,7 @@ router.get("/user", async (req, res) => {
   }
 });
 
-// 사용자 프로필 업데이트
+// 사용자 프로필 업데이트(update)
 router.put("/profile", async (req, res) => {
   const authHeader = req.headers.authorization;
   

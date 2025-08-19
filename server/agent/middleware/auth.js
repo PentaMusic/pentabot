@@ -1,14 +1,14 @@
 import { verifyToken } from "../database/auth.js";
 
-// 인증 미들웨어
+// 인증 미들웨어 (next())
 export const requireAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   
-  console.log('Auth middleware check:', {
-    authHeader: authHeader ? 'Present' : 'Missing',
-    url: req.url,
-    method: req.method
-  });
+  // console.log('Auth middleware check:', {
+  //   authHeader: authHeader ? 'Present' : 'Missing',
+  //   url: req.url,
+  //   method: req.method
+  // });
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     console.log('Missing or invalid auth header');
@@ -16,7 +16,7 @@ export const requireAuth = async (req, res, next) => {
   }
 
   const token = authHeader.substring(7);
-  console.log('Token extracted, length:', token.length);
+  // console.log('Token extracted, length:', token.length);
   
   const userResult = await verifyToken(token);
   
