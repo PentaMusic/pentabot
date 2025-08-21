@@ -195,10 +195,14 @@
   transform: translateY(-50%);
   opacity: 0;
   transition: opacity 0.2s ease;
+  z-index: 10;
+  pointer-events: none;
 }
 
-.folder-item-container:hover .folder-actions {
+.folder-item-container:hover .folder-actions,
+.folder-actions.menu-open {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .folder-menu-btn {
@@ -207,12 +211,13 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  background: none;
+  background: rgba(255, 255, 255, 0.05);
   border: none;
   border-radius: 4px;
   color: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
+  pointer-events: auto;
 }
 
 .folder-menu-btn:hover {
@@ -229,7 +234,9 @@
   padding: 4px 0;
   min-width: 120px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 10;
+  z-index: 50;
+  margin-top: 8px;
+  pointer-events: auto;
 }
 
 .folder-menu-item {
@@ -266,6 +273,24 @@
 .folder-name {
   font-weight: 500;
   font-size: 14px;
+}
+
+.folder-name-input {
+  background: #0d1117;
+  border: 1px solid #0969da;
+  border-radius: 4px;
+  color: #f0f6fc;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 2px 6px;
+  margin: 0;
+  min-width: 120px;
+  font-family: inherit;
+}
+
+.folder-name-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
 }
 
 .access-badge {

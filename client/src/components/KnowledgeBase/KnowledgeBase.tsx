@@ -13,9 +13,11 @@ interface KnowledgeFolder {
   access_level: 'personal' | 'department' | 'company';
   organization_id?: string;
   path: string;
+  depth?: number;
   is_system_folder: boolean;
   created_at: string;
   updated_at: string;
+  children?: KnowledgeFolder[];
 }
 
 interface KnowledgeFile {
@@ -56,6 +58,8 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
   const [editingFileName, setEditingFileName] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [editingFolderName, setEditingFolderName] = useState('');
 
   // Fetch folders on component mount
   useEffect(() => {
@@ -63,6 +67,54 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
       fetchFolders();
     }
   }, [user, token]);
+
+  // Build folder tree structure
+  const buildFolderTree = (folders: KnowledgeFolder[]): KnowledgeFolder[] => {
+    // Create a map for quick lookup
+    const folderMap = new Map<string, KnowledgeFolder>();
+    folders.forEach(folder => {
+      folderMap.set(folder.id, { ...folder, children: [] });
+    });
+
+    const rootFolders: KnowledgeFolder[] = [];
+    const result: KnowledgeFolder[] = [];
+
+    // First, identify root folders and build parent-child relationships
+    folders.forEach(folder => {
+      if (!folder.parent_folder_id) {
+        rootFolders.push(folderMap.get(folder.id)!);
+      } else {
+        const parent = folderMap.get(folder.parent_folder_id);
+        if (parent) {
+          if (!parent.children) parent.children = [];
+          parent.children.push(folderMap.get(folder.id)!);
+        }
+      }
+    });
+
+    // Sort root folders (system folders first)
+    rootFolders.sort((a, b) => {
+      if (a.is_system_folder !== b.is_system_folder) {
+        return a.is_system_folder ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    // Flatten the tree into display order
+    const flattenTree = (folders: KnowledgeFolder[]) => {
+      folders.forEach(folder => {
+        result.push(folder);
+        if (folder.children && folder.children.length > 0) {
+          // Sort children
+          folder.children.sort((a, b) => a.name.localeCompare(b.name));
+          flattenTree(folder.children);
+        }
+      });
+    };
+
+    flattenTree(rootFolders);
+    return result;
+  };
 
   // Fetch files when folder is selected
   useEffect(() => {
@@ -87,9 +139,15 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
         
         // Auto-select first system folder if no folder is selected
         if (!selectedFolder && data.folders.length > 0) {
-          const firstSystemFolder = data.folders.find((f: KnowledgeFolder) => f.is_system_folder);
-          if (firstSystemFolder) {
-            setSelectedFolder(firstSystemFolder.id);
+          const systemFolders = data.folders.filter((f: KnowledgeFolder) => f.is_system_folder);
+          if (systemFolders.length > 0) {
+            // Sort system folders to get personal folder first
+            systemFolders.sort((a: KnowledgeFolder, b: KnowledgeFolder) => {
+              if (a.access_level === 'personal') return -1;
+              if (b.access_level === 'personal') return 1;
+              return a.name.localeCompare(b.name);
+            });
+            setSelectedFolder(systemFolders[0].id);
           }
         }
       } else {
@@ -260,8 +318,9 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
       if (response.ok) {
         const data = await response.json();
         console.log('Folder created:', data.folder);
-        // Refresh folders list
-        fetchFolders();
+        // Refresh folders list and select the new folder
+        await fetchFolders();
+        setSelectedFolder(data.folder.id);
         setIsCreateFolderModalOpen(false);
       } else {
         const errorData = await response.json();
@@ -428,6 +487,120 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
     setSelectedFiles(new Set());
   }, [selectedFolder]);
 
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (folderMenuOpenId) {
+        const target = event.target as Element;
+        if (!target.closest('.folder-menu') && !target.closest('.folder-menu-btn')) {
+          setFolderMenuOpenId(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [folderMenuOpenId]);
+
+  const startEditingFolderName = (folder: KnowledgeFolder) => {
+    setEditingFolderId(folder.id);
+    setEditingFolderName(folder.name);
+    setFolderMenuOpenId(null); // Close menu
+  };
+
+  const cancelEditingFolderName = () => {
+    setEditingFolderId(null);
+    setEditingFolderName('');
+  };
+
+  const saveFolderName = async (folderId: string) => {
+    if (!user || !token || !editingFolderName.trim()) {
+      cancelEditingFolderName();
+      return;
+    }
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${apiUrl}/knowledge/folders/${folderId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: editingFolderName.trim()
+        }),
+      });
+
+      if (response.ok) {
+        // Refresh folders list
+        fetchFolders();
+        cancelEditingFolderName();
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to rename folder');
+      }
+    } catch (error) {
+      console.error('Error renaming folder:', error);
+      setError('Error renaming folder');
+    }
+  };
+
+  const handleFolderNameKeyDown = (e: React.KeyboardEvent, folderId: string) => {
+    if (e.key === 'Enter') {
+      saveFolderName(folderId);
+    } else if (e.key === 'Escape') {
+      cancelEditingFolderName();
+    }
+  };
+
+  const deleteFolder = async (folderId: string) => {
+    if (!user || !token) return;
+
+    const folder = folders.find(f => f.id === folderId);
+    if (!folder) return;
+
+    const confirmed = window.confirm(`"${folder.name}" 폴더를 삭제하시겠습니까? 폴더 안의 모든 파일과 하위 폴더도 함께 삭제됩니다.`);
+    if (!confirmed) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${apiUrl}/knowledge/folders/${folderId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        // If the deleted folder was selected, select parent or first available folder
+        if (selectedFolder === folderId) {
+          const parentFolder = folders.find(f => f.id === folder.parent_folder_id);
+          if (parentFolder) {
+            setSelectedFolder(parentFolder.id);
+          } else {
+            const systemFolders = folders.filter(f => f.is_system_folder);
+            if (systemFolders.length > 0) {
+              setSelectedFolder(systemFolders[0].id);
+            }
+          }
+        }
+        
+        // Refresh folders list
+        fetchFolders();
+        setFolderMenuOpenId(null);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to delete folder');
+      }
+    } catch (error) {
+      console.error('Error deleting folder:', error);
+      setError('Error deleting folder');
+    }
+  };
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -484,6 +657,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
   }
 
   const currentFolder = folders.find(f => f.id === selectedFolder);
+  const orderedFolders = buildFolderTree(folders);
 
   return (
     <div className="knowledge-base">
@@ -535,43 +709,91 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
         <div className="folders-sidebar">
           <h3>폴더</h3>
           <div className="folders-list">
-            {folders.map((folder) => (
+            {orderedFolders.map((folder) => (
               <div
                 key={folder.id}
                 className={`folder-item-container ${selectedFolder === folder.id ? 'active' : ''}`}
               >
-                <button
+                <div
                   className="folder-item"
-                  onClick={() => setSelectedFolder(folder.id)}
+                  onClick={(e) => {
+                    // Only select folder if not clicking on menu or input
+                    if (!e.currentTarget.querySelector('.folder-actions:hover, .folder-name-input')) {
+                      if (editingFolderId !== folder.id) {
+                        setSelectedFolder(folder.id);
+                      }
+                    }
+                  }}
                   style={{ paddingLeft: `${16 + (folder.depth || 0) * 20}px` }}
                 >
                   <FolderIcon className="folder-icon" />
                   <div className="folder-info">
-                    <span className="folder-name">{folder.name}</span>
-                    {folder.depth === 0 && (
+                    {editingFolderId === folder.id ? (
+                      <input
+                        type="text"
+                        value={editingFolderName}
+                        onChange={(e) => setEditingFolderName(e.target.value)}
+                        onKeyDown={(e) => handleFolderNameKeyDown(e, folder.id)}
+                        onBlur={() => saveFolderName(folder.id)}
+                        className="folder-name-input"
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <span className="folder-name">{folder.name}</span>
+                    )}
+                    {folder.depth === 0 && editingFolderId !== folder.id && (
                       <span className={`access-badge ${getAccessLevelBadge(folder.access_level).class}`}>
                         {getAccessLevelBadge(folder.access_level).text}
                       </span>
                     )}
                   </div>
-                </button>
+                </div>
                 
                 {!folder.is_system_folder && (
-                  <div className="folder-actions">
+                  <div className={`folder-actions ${folderMenuOpenId === folder.id ? 'menu-open' : ''}`}>
                     <button
                       className="folder-menu-btn"
                       onClick={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
                         setFolderMenuOpenId(folderMenuOpenId === folder.id ? null : folder.id);
                       }}
+                      onMouseEnter={(e) => e.stopPropagation()}
+                      onMouseLeave={(e) => e.stopPropagation()}
                     >
                       <MoreVerticalIcon />
                     </button>
                     
                     {folderMenuOpenId === folder.id && (
-                      <div className="folder-menu">
-                        <button className="folder-menu-item">이름 변경</button>
-                        <button className="folder-menu-item delete">삭제</button>
+                      <div 
+                        className="folder-menu" 
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseEnter={(e) => e.stopPropagation()}
+                        onMouseLeave={(e) => e.stopPropagation()}
+                      >
+                        <button 
+                          className="folder-menu-item"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            startEditingFolderName(folder);
+                          }}
+                          onMouseEnter={(e) => e.stopPropagation()}
+                        >
+                          이름 변경
+                        </button>
+                        <button 
+                          className="folder-menu-item delete"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            deleteFolder(folder.id);
+                          }}
+                          onMouseEnter={(e) => e.stopPropagation()}
+                        >
+                          삭제
+                        </button>
                       </div>
                     )}
                   </div>

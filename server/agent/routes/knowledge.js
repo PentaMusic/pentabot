@@ -22,9 +22,7 @@ router.get('/folders', requireAuth, async (req, res) => {
     const { data: folders, error } = await supabase
       .from('knowledge_folders')
       .select('*')
-      .order('is_system_folder', { ascending: false })
-      .order('depth')
-      .order('name');
+      .order('path');
     
     if (error) {
       console.error('Error fetching folders:', error);
