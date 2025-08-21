@@ -41,6 +41,8 @@ import threadRoutes from './routes/threads.js';
 import messageRoutes from './routes/messages.js';
 import usageRoutes from './routes/usage.js';
 import generateRoutes from './routes/generate.js';
+import profileRoutes from './routes/profile.js';
+import knowledgeRoutes from './routes/knowledge.js';
 
 const app = express();
 const port = 3001;
@@ -60,6 +62,8 @@ app.get('/', (req, res) => {
             messages: '/messages/*',
             usage: '/usage/*',
             generate: '/generate/*',
+            profile: '/profile/*',
+            knowledge: '/knowledge/*',
         },
     });
 });
@@ -70,6 +74,8 @@ app.use('/threads', threadRoutes);
 app.use('/messages', messageRoutes);
 app.use('/usage', usageRoutes);
 app.use('/generate', generateRoutes);
+app.use('/profile', profileRoutes);
+app.use('/knowledge', knowledgeRoutes);
 
 // 에러 핸들링 미들웨어
 app.use((err, req, res, next) => {

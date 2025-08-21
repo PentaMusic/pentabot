@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import AuthModal from '../Auth/AuthModal';
-import { NewChatIcon, SidebarToggleIcon, SidebarCloseIcon, MessageIcon, TrashIcon, EditIcon, SearchIcon } from '../icons/Icons';
+import { NewChatIcon, SidebarToggleIcon, SidebarCloseIcon, MessageIcon, TrashIcon, EditIcon, SearchIcon, UserIcon, ChevronDownIcon, SignOutIcon, LoadingSpinnerIcon, SignInIcon, SettingsIcon, KnowledgeIcon } from '../icons/Icons';
 import './Sidebar.css';
 
 interface Thread {
@@ -17,6 +17,8 @@ interface SidebarProps {
   onNewChat: () => void;
   currentThreadId: string | null;
   onThreadCreated?: (threadId: string) => void;
+  onOpenProfileModal?: () => void;
+  onNavigateToKnowledge?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -25,7 +27,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onThreadSelect,
   onNewChat,
   currentThreadId,
-  onThreadCreated
+  onThreadCreated,
+  onOpenProfileModal,
+  onNavigateToKnowledge
 }) => {
   const { user, token, signOut } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -287,18 +291,30 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       <div className="sidebar-content">
         {user && (
-          <div className="search-container">
-            <div className="search-input-wrapper">
-              <SearchIcon />
-              <input
-                type="text"
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
-              />
+          <>
+            <div className="navigation-menu">
+              <button 
+                className="nav-menu-item"
+                onClick={() => onNavigateToKnowledge?.()}
+              >
+                <KnowledgeIcon />
+                지식 베이스
+              </button>
             </div>
-          </div>
+            
+            <div className="search-container">
+              <div className="search-input-wrapper">
+                <SearchIcon />
+                <input
+                  type="text"
+                  placeholder="Search conversations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+            </div>
+          </>
         )}
         
         <div className="threads-list">
@@ -314,9 +330,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="loading-threads">
               <div className="loading-message">
                 <div className="loading-spinner">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 12a9 9 0 11-6.219-8.56"/>
-                  </svg>
+                  <LoadingSpinnerIcon />
                 </div>
                 <span>Loading conversations...</span>
               </div>
@@ -384,19 +398,14 @@ const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             >
               <div className="user-avatar">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
+                <UserIcon />
               </div>
               <div className="user-details">
                 <span className="user-name">{user.display_name || user.email.split('@')[0]}</span>
                 <span className="user-email">{user.email}</span>
               </div>
               <div className="user-menu-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="6,9 12,15 18,9"/>
-                </svg>
+                <ChevronDownIcon />
               </div>
             </button>
             
@@ -405,15 +414,21 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <button 
                   className="user-menu-item"
                   onClick={() => {
+                    onOpenProfileModal?.();
+                    setIsUserMenuOpen(false);
+                  }}
+                >
+                  <SettingsIcon />
+                  개인정보 설정
+                </button>
+                <button 
+                  className="user-menu-item"
+                  onClick={() => {
                     signOut();
                     setIsUserMenuOpen(false);
                   }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                    <polyline points="16,17 21,12 16,7"/>
-                    <line x1="21" y1="12" x2="9" y2="12"/>
-                  </svg>
+                  <SignOutIcon />
                   Sign Out
                 </button>
               </div>
@@ -424,11 +439,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             className="sign-in-btn"
             onClick={() => setIsAuthModalOpen(true)}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-              <polyline points="10,17 15,12 10,7"/>
-              <line x1="15" y1="12" x2="3" y2="12"/>
-            </svg>
+            <SignInIcon />
             Sign In
           </button>
         )}

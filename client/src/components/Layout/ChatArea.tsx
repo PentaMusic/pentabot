@@ -86,6 +86,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     let inCodeBlock = false;
     let codeBlockContent: string[] = [];
     const elements: React.JSX.Element[] = [];
+    let numberedItemCount = 0; // 번호 매겨진 항목의 실제 카운터
 
     lines.forEach((line, index) => {
       if (line.type === 'code-delimiter') {
@@ -128,9 +129,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           );
           break;
         case 'numbered-item':
+          numberedItemCount++; // 번호 매겨진 항목일 때만 카운터 증가
           elements.push(
             <div key={index} className="markdown-numbered-item">
-              {index + 1}. {<span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(line.content) }} />}
+              {numberedItemCount}. {<span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(line.content) }} />}
             </div>
           );
           break;

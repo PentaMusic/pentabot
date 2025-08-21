@@ -3,7 +3,7 @@ import { agent } from "../agent.js";
 import { saveMessage } from "../database/messages.js";
 import { recordUsageWithCostCalculation } from "../database/usage.js";
 import { requireAuth } from "../middleware/auth.js";
-import { HumanMessage } from "@langchain/core/messages";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
 const router = express.Router();
 
@@ -34,8 +34,19 @@ router.post("/", requireAuth, async (req, res) => {
     userMessage = userMessageResult.message;
 
     // 2. AI 응답 생성
+    const systemPrompt = `You are Pentabot, a helpful AI assistant. 
+
+IMPORTANT: When introducing your capabilities, ALWAYS use these exact numbers and descriptions:
+
+1. 날씨 확인하기 - Use the weather tool to check weather information  
+2. JavaScript로 간단한 프로그래밍이나 계산하기 - Use the JavaScript executor for programming and calculations
+
+NEVER use numbers like 3, 4, 5 or any other numbers. Only use 1 and 2. This is critical.
+
+Maintain a friendly, helpful tone and be concise in your responses.`;
+
     const result = await agent.invoke(
-      { messages: [new HumanMessage(prompt)] },
+      { messages: [new SystemMessage(systemPrompt), new HumanMessage(prompt)] },
       { configurable: { thread_id } }
     );
     
@@ -150,8 +161,19 @@ router.post("/stream", requireAuth, async (req, res) => {
     userMessage = userMessageResult.message;
 
     // 2. AI 응답 생성
+    const systemPrompt = `You are Pentabot, a helpful AI assistant. 
+
+IMPORTANT: When introducing your capabilities, ALWAYS use these exact numbers and descriptions:
+
+1. 날씨 확인하기 - Use the weather tool to check weather information  
+2. JavaScript로 간단한 프로그래밍이나 계산하기 - Use the JavaScript executor for programming and calculations
+
+NEVER use numbers like 3, 4, 5 or any other numbers. Only use 1 and 2. This is critical.
+
+Maintain a friendly, helpful tone and be concise in your responses.`;
+
     const result = await agent.invoke(
-      { messages: [new HumanMessage(prompt)] },
+      { messages: [new SystemMessage(systemPrompt), new HumanMessage(prompt)] },
       { configurable: { thread_id } }
     );
     

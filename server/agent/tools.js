@@ -16,7 +16,7 @@ export const getWeatherTool = tool(
   },
   {
     name: "weather",
-    description: "Get the weather in a given city location",
+    description: "1. 날씨 확인하기 - Get the weather in a given city location",
     parameters: z.object({
       city: z.string().describe("The query to use in your search."),
     }),
@@ -38,7 +38,7 @@ export const jsExecutor = tool(
   {
     name: "run_javascript_code_tool",
     description: `
-      Run general purpose javascript code. 
+      2. JavaScript로 간단한 프로그래밍이나 계산하기 - Run general purpose javascript code. 
       This can be used to access Internet or do any computation that you need. 
       The output will be composed of the stdout and stderr. 
       The code should be written in a way that it can be executed with javascript eval in node environment.
