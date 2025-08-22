@@ -52,6 +52,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: '*' }));
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${req.method} ${req.path} - Client: ${req.ip || req.connection.remoteAddress}`);
+  next();
+});
+
 // Set charset for proper Korean character handling
 app.use((req, res, next) => {
   res.charset = 'utf-8';
@@ -60,12 +67,29 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+    const healthStatus = {
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        version: '1.0.0'
+    };
+    
+    console.log(`[HEALTH CHECK] Server health requested - Status: ${healthStatus.status}`);
+    res.json(healthStatus);
+});
+
 // 기본 엔드포인트
 app.get('/', (req, res) => {
     res.json({
         message: 'Pentabot API Server',
         version: '1.0.0',
+        status: 'running',
+        timestamp: new Date().toISOString(),
         endpoints: {
+            health: '/health',
             auth: '/auth/*',
             threads: '/threads/*',
             messages: '/messages/*',

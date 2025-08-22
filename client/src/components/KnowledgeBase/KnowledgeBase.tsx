@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import CreateFolderModal from './CreateFolderModal';
-import { FolderIcon, FolderPlusIcon, MoreVerticalIcon } from '../icons/Icons';
+import { FolderIcon, FolderPlusIcon, MoreVerticalIcon, LockIcon } from '../icons/Icons';
 import './KnowledgeBase.css';
 
 interface KnowledgeFolder {
@@ -496,6 +496,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
   };
 
   const moveSelectedFiles = async () => {
+    console.log("here",  user, token, selectAllFiles, targetFolderId);
     if (!user || !token || selectedFiles.size === 0 || !targetFolderId) return;
     
     const fileIdsArray = Array.from(selectedFiles);
@@ -503,8 +504,9 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
     
     try {
       const apiUrl = import.meta.env.VITE_API_URL;
+      console.log('apiUrl:', apiUrl);
       const response = await fetch(`${apiUrl}/knowledge/files/move`, {
-        method: 'PATCH',
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -514,9 +516,12 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
           targetFolderId: targetFolderId
         }),
       });
+      
+      console.log('Move response:', response);
 
       if (response.ok) {
         const data = await response.json();
+        console.log(data);
         setSelectedFiles(new Set());
         setIsMoveModalOpen(false);
         setTargetFolderId(null);
@@ -533,6 +538,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
       } else {
         const errorData = await response.json();
         setError(errorData.error || '파일 이동에 실패했습니다');
+        console.error('Error moving files:', errorData);
       }
     } catch (error) {
       console.error('Error moving files:', error);
@@ -837,7 +843,12 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
                         onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
-                      <span className="folder-name">{folder.name}</span>
+                      <div className="folder-name-container">
+                        <span className="folder-name">{folder.name}</span>
+                        {folder.is_system_folder && (
+                          <LockIcon className="system-folder-lock" width={12} height={12} />
+                        )}
+                      </div>
                     )}
                     {folder.depth === 0 && editingFolderId !== folder.id && (
                       <span className={`access-badge ${getAccessLevelBadge(folder.access_level).class}`}>
@@ -1126,20 +1137,27 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
             </div>
             <div className="modal-body">
               <p>{selectedFiles.size}개의 파일을 이동할 폴더를 선택하세요.</p>
-              <div className="folder-list">
-                {folders.map((folder) => (
+              <div className="folder-tree-list">
+                {buildFolderTree(folders).map((folder) => (
                   <div
                     key={folder.id}
-                    className={`folder-item ${targetFolderId === folder.id ? 'selected' : ''} ${folder.id === selectedFolder ? 'disabled' : ''}`}
+                    className={`folder-tree-item ${targetFolderId === folder.id ? 'selected' : ''} ${folder.id === selectedFolder ? 'disabled' : ''}`}
+                    style={{ paddingLeft: `${16 + (folder.depth || 0) * 20}px` }}
                     onClick={() => {
                       if (folder.id !== selectedFolder) {
                         setTargetFolderId(folder.id);
                       }
                     }}
                   >
-                    <span className="folder-icon">📁</span>
+                    <FolderIcon width={16} height={16} />
                     <span className="folder-name">{folder.name}</span>
+                    {folder.is_system_folder && (
+                      <LockIcon className="system-folder-lock" width={10} height={10} />
+                    )}
                     {folder.id === selectedFolder && <span className="current-folder">(현재 폴더)</span>}
+                    <span className={`access-badge ${getAccessLevelBadge(folder.access_level).class}`}>
+                      {getAccessLevelBadge(folder.access_level).text}
+                    </span>
                   </div>
                 ))}
               </div>
