@@ -428,7 +428,7 @@ ORDER BY fh.depth ASC;
 $$ LANGUAGE SQL STABLE;
 
 -- Function to get all subfolders of a folder
-CREATE OR REPLACE FUNCTION public.get_folder_children(folder_id UUID, include_files BOOLEAN DEFAULT FALSE)
+CREATE OR REPLACE FUNCTION public.get_folder_children(p_folder_id UUID, include_files BOOLEAN DEFAULT FALSE)
 RETURNS TABLE(
     id UUID, 
     name TEXT, 
@@ -442,7 +442,7 @@ BEGIN
     RETURN QUERY
     SELECT f.id, f.name, 'folder'::TEXT as type, NULL::BIGINT as size, f.created_at, f.updated_at
     FROM public.knowledge_folders f
-    WHERE f.parent_folder_id = folder_id
+    WHERE f.parent_folder_id = p_folder_id
     ORDER BY f.name;
     
     -- Return files if requested
@@ -450,7 +450,7 @@ BEGIN
         RETURN QUERY
         SELECT kf.id, kf.original_name as name, 'file'::TEXT as type, kf.file_size as size, kf.created_at, kf.updated_at
         FROM public.knowledge_files kf
-        WHERE kf.folder_id = folder_id
+        WHERE kf.folder_id = p_folder_id
         ORDER BY kf.original_name;
     END IF;
 END;

@@ -90,3 +90,18 @@ export const verifyToken = async (token) => {
         return { success: false, error: error.message };
     }
 };
+
+// 토큰 새로고침
+export const refreshAccessToken = async (refreshToken) => {
+    try {
+        const { data, error } = await supabase.auth.refreshSession({
+            refresh_token: refreshToken
+        });
+
+        if (error) throw error;
+
+        return { success: true, session: data.session };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};

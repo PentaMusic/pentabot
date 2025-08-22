@@ -1,5 +1,5 @@
 import express from 'express';
-import { signUp, signIn, signOut, getCurrentUser, updateUserProfile, verifyToken } from "../database/auth.js";
+import { signUp, signIn, signOut, getCurrentUser, updateUserProfile, verifyToken, refreshAccessToken } from "../database/auth.js";
 
 const router = express.Router();
 
@@ -96,6 +96,26 @@ router.put("/profile", async (req, res) => {
     res.json({ message: "Profile updated successfully", user: result.user });
   } else {
     res.status(400).json({ error: result.error });
+  }
+});
+
+// 토큰 새로고침
+router.post("/refresh", async (req, res) => {
+  const { refresh_token } = req.body;
+  
+  if (!refresh_token) {
+    return res.status(400).json({ error: "Refresh token required" });
+  }
+
+  const result = await refreshAccessToken(refresh_token);
+  
+  if (result.success) {
+    res.json({ 
+      message: "Token refreshed successfully",
+      session: result.session
+    });
+  } else {
+    res.status(401).json({ error: result.error });
   }
 });
 

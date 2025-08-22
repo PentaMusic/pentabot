@@ -46,6 +46,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
   const { user, token } = useAuth();
   const [folders, setFolders] = useState<KnowledgeFolder[]>([]);
   const [files, setFiles] = useState<KnowledgeFile[]>([]);
+  const [subfolders, setSubfolders] = useState<KnowledgeFolder[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +61,10 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editingFolderName, setEditingFolderName] = useState('');
+  const [activeFileMenu, setActiveFileMenu] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState<boolean>(false);
+  const [targetFolderId, setTargetFolderId] = useState<string | null>(null);
 
   // Fetch folders on component mount
   useEffect(() => {
@@ -116,10 +121,10 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
     return result;
   };
 
-  // Fetch files when folder is selected
+  // Fetch folder contents when folder is selected
   useEffect(() => {
     if (selectedFolder && user && token) {
-      fetchFiles(selectedFolder);
+      fetchFolderContents(selectedFolder);
     }
   }, [selectedFolder, user, token]);
 
@@ -161,10 +166,10 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
     }
   };
 
-  const fetchFiles = async (folderId: string) => {
+  const fetchFolderContents = async (folderId: string) => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${apiUrl}/knowledge/folders/${folderId}/files`, {
+      const response = await fetch(`${apiUrl}/knowledge/folders/${folderId}/children?include_files=true`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -173,13 +178,21 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setFiles(data.files || []);
+        const children = data.children || [];
+        
+        // Separate folders and files
+        const subfolders = children.filter((item: any) => item.type === 'folder');
+        const files = children.filter((item: any) => item.type === 'file');
+        
+        setFiles(files);
+        // Store subfolders separately (we'll need this for rendering)
+        setSubfolders(subfolders);
       } else {
-        setError('Failed to fetch files');
+        setError('Failed to fetch folder contents');
       }
     } catch (error) {
-      console.error('Error fetching files:', error);
-      setError('Error fetching files');
+      console.error('Error fetching folder contents:', error);
+      setError('Error fetching folder contents');
     }
   };
 
@@ -207,8 +220,8 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
       if (response.ok) {
         const data = await response.json();
         console.log('Files uploaded:', data);
-        // Refresh files list
-        fetchFiles(selectedFolder);
+        // Refresh folder contents
+        fetchFolderContents(selectedFolder);
       } else {
         setError('Failed to upload files');
       }
@@ -285,7 +298,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
       if (response.ok) {
         const data = await response.json();
         console.log('Files uploaded:', data);
-        fetchFiles(selectedFolder);
+        fetchFolderContents(selectedFolder);
       } else {
         setError('Failed to upload files');
       }
@@ -364,7 +377,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
       if (response.ok) {
         // Refresh files list
         if (selectedFolder) {
-          fetchFiles(selectedFolder);
+          fetchFolderContents(selectedFolder);
         }
         cancelEditingFileName();
       } else {
@@ -403,7 +416,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
       if (response.ok) {
         // Refresh files list
         if (selectedFolder) {
-          fetchFiles(selectedFolder);
+          fetchFolderContents(selectedFolder);
         }
       } else {
         const errorData = await response.json();
@@ -474,12 +487,67 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
       // Clear selection and refresh files
       setSelectedFiles(new Set());
       if (selectedFolder) {
-        fetchFiles(selectedFolder);
+        fetchFolderContents(selectedFolder);
       }
     } catch (error) {
       console.error('Error deleting files:', error);
       setError('파일 삭제 중 오류가 발생했습니다.');
     }
+  };
+
+  const moveSelectedFiles = async () => {
+    if (!user || !token || selectedFiles.size === 0 || !targetFolderId) return;
+    
+    const fileIdsArray = Array.from(selectedFiles);
+    console.log('Moving files:', { fileIds: fileIdsArray, targetFolderId, selectedFiles });
+    
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${apiUrl}/knowledge/files/move`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileIds: fileIdsArray,
+          targetFolderId: targetFolderId
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedFiles(new Set());
+        setIsMoveModalOpen(false);
+        setTargetFolderId(null);
+        
+        // Refresh current folder
+        if (selectedFolder) {
+          fetchFolderContents(selectedFolder);
+        }
+      } else if (response.status === 401) {
+        // Token expired, try to refresh
+        console.log('Token expired, attempting refresh...');
+        // For now, redirect to login
+        window.location.href = '/login';
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || '파일 이동에 실패했습니다');
+      }
+    } catch (error) {
+      console.error('Error moving files:', error);
+      setError('파일 이동 중 오류가 발생했습니다');
+    }
+  };
+
+  const openMoveModal = () => {
+    if (selectedFiles.size === 0) return;
+    setIsMoveModalOpen(true);
+  };
+
+  const closeMoveModal = () => {
+    setIsMoveModalOpen(false);
+    setTargetFolderId(null);
   };
 
   // Clear file selection when folder changes
@@ -612,6 +680,35 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('ko-KR');
   };
+
+  const toggleFileMenu = (fileId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    if (activeFileMenu === fileId) {
+      setActiveFileMenu(null);
+      setMenuPosition(null);
+    } else {
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.right + window.scrollX - 120 // Adjust for menu width
+      });
+      setActiveFileMenu(fileId);
+    }
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (activeFileMenu) {
+        setActiveFileMenu(null);
+        setMenuPosition(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [activeFileMenu]);
 
   const getAccessLevelBadge = (level: string) => {
     const badges = {
@@ -831,6 +928,12 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
                     <div className="bulk-actions">
                       <span className="selected-count">{selectedFiles.size}개 선택됨</span>
                       <button
+                        className="move-selected-btn"
+                        onClick={openMoveModal}
+                      >
+                        이동
+                      </button>
+                      <button
                         className="delete-selected-btn"
                         onClick={deleteSelectedFiles}
                       >
@@ -852,7 +955,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
             </div>
           )}
 
-          {files.length === 0 ? (
+          {files.length === 0 && subfolders.length === 0 ? (
             <div className="empty-state">
               <p>이 폴더에는 아직 파일이 없습니다.</p>
               {selectedFolder && (
@@ -861,6 +964,44 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
             </div>
           ) : (
             <div className={`files-${viewMode}`}>
+              {/* Render subfolders first */}
+              {subfolders.map((folder) => (
+                <div key={`folder-${folder.id}`} className="file-item folder-item">
+                  <div className="file-icon">
+                    <FolderIcon />
+                  </div>
+                  <div className="file-details">
+                    <h3 className="file-name">{folder.name}</h3>
+                    <div className="file-meta">
+                      <span>폴더</span>
+                      <span>{formatDate(folder.created_at)}</span>
+                      {folder.access_level && (
+                        <span className={`access-badge ${getAccessLevelBadge(folder.access_level).class}`}>
+                          {getAccessLevelBadge(folder.access_level).text}
+                        </span>
+                      )}
+                    </div>
+                    {folder.description && (
+                      <div className="folder-description">
+                        {folder.description}
+                      </div>
+                    )}
+                  </div>
+                  <div className="file-actions">
+                    <div className="file-menu">
+                      <button 
+                        className="download-btn"
+                        onClick={() => setSelectedFolder(folder.id)}
+                        title="폴더 열기"
+                      >
+                        열기
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Render files */}
               {files.map((file) => (
                 <div key={file.id} className={`file-item ${selectedFiles.has(file.id) ? 'selected' : ''}`}>
                   <label className="file-checkbox">
@@ -913,23 +1054,12 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
                         다운로드
                       </button>
                       <div className="file-menu-dropdown">
-                        <button className="file-menu-trigger">
+                        <button 
+                          className="file-menu-trigger"
+                          onClick={(e) => toggleFileMenu(file.id, e)}
+                        >
                           <MoreVerticalIcon />
                         </button>
-                        <div className="file-menu-content">
-                          <button 
-                            className="file-menu-item"
-                            onClick={() => startEditingFileName(file)}
-                          >
-                            이름 변경
-                          </button>
-                          <button 
-                            className="file-menu-item delete"
-                            onClick={() => deleteFile(file.id)}
-                          >
-                            삭제
-                          </button>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -946,6 +1076,89 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ onBackToChat }) => {
         onCreateFolder={createFolder}
         parentFolderName={currentFolder?.name}
       />
+
+      {/* File menu portal */}
+      {activeFileMenu && menuPosition && (
+        <div 
+          className="file-menu-content"
+          style={{
+            position: 'fixed',
+            top: menuPosition.top,
+            left: menuPosition.left,
+            zIndex: 1000,
+            opacity: 1,
+            visibility: 'visible',
+            transform: 'translateY(0)',
+            pointerEvents: 'auto'
+          }}
+        >
+          <button 
+            className="file-menu-item"
+            onClick={() => {
+              const file = files.find(f => f.id === activeFileMenu);
+              if (file) startEditingFileName(file);
+              setActiveFileMenu(null);
+              setMenuPosition(null);
+            }}
+          >
+            이름 변경
+          </button>
+          <button 
+            className="file-menu-item delete"
+            onClick={() => {
+              deleteFile(activeFileMenu);
+              setActiveFileMenu(null);
+              setMenuPosition(null);
+            }}
+          >
+            삭제
+          </button>
+        </div>
+      )}
+      
+      {/* Move Files Modal */}
+      {isMoveModalOpen && (
+        <div className="modal-overlay" onClick={closeMoveModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>파일 이동</h3>
+              <button className="modal-close" onClick={closeMoveModal}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>{selectedFiles.size}개의 파일을 이동할 폴더를 선택하세요.</p>
+              <div className="folder-list">
+                {folders.map((folder) => (
+                  <div
+                    key={folder.id}
+                    className={`folder-item ${targetFolderId === folder.id ? 'selected' : ''} ${folder.id === selectedFolder ? 'disabled' : ''}`}
+                    onClick={() => {
+                      if (folder.id !== selectedFolder) {
+                        setTargetFolderId(folder.id);
+                      }
+                    }}
+                  >
+                    <span className="folder-icon">📁</span>
+                    <span className="folder-name">{folder.name}</span>
+                    {folder.id === selectedFolder && <span className="current-folder">(현재 폴더)</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={closeMoveModal}>
+                취소
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={moveSelectedFiles}
+                disabled={!targetFolderId}
+              >
+                이동
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

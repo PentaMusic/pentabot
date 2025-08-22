@@ -479,6 +479,20 @@
   border-color: #0969da;
 }
 
+.file-item.folder-item {
+  background: #171717;
+  border: 1px solid #2d2d2d;
+}
+
+.file-item.folder-item:hover {
+  border-color: #0969da30;
+  background: #0969da05;
+}
+
+.file-item.folder-item .file-icon {
+  color: #ffd700;
+}
+
 .file-checkbox {
   display: flex;
   align-items: center;
@@ -603,27 +617,22 @@
 }
 
 .file-menu-content {
-  position: absolute;
-  top: 100%;
-  right: 0;
+  position: fixed;
   background: #171717;
   border: 1px solid #404040;
   border-radius: 6px;
   padding: 4px 0;
   min-width: 120px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 10;
+  z-index: 1000;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-4px);
   transition: all 0.2s ease;
+  pointer-events: none;
 }
 
-.file-menu-dropdown:hover .file-menu-content {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
+/* Remove hover-based menu display - now handled by React state */
 
 .file-menu-item {
   display: block;
@@ -731,4 +740,184 @@
   .files-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Move Files Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #30363d;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #f0f6fc;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: #30363d;
+  color: #f0f6fc;
+}
+
+.modal-body {
+  padding: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.modal-body p {
+  margin: 0 0 16px 0;
+  color: #8b949e;
+  font-size: 14px;
+}
+
+.folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.folder-list .folder-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.folder-list .folder-item:hover:not(.disabled) {
+  background: #30363d;
+}
+
+.folder-list .folder-item.selected {
+  background: rgba(9, 105, 218, 0.1);
+  border-color: #0969da;
+}
+
+.folder-list .folder-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.folder-list .folder-icon {
+  font-size: 16px;
+}
+
+.folder-list .folder-name {
+  color: #f0f6fc;
+  font-size: 14px;
+  flex: 1;
+}
+
+.current-folder {
+  color: #8b949e;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #30363d;
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #f0f6fc;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #30363d;
+}
+
+.btn-primary {
+  padding: 8px 16px;
+  background: #238636;
+  border: 1px solid #238636;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #2ea043;
+  border-color: #2ea043;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Move button styling */
+.move-selected-btn {
+  padding: 6px 12px;
+  background: #0969da;
+  border: 1px solid #0969da;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.move-selected-btn:hover {
+  background: #0860ca;
+  border-color: #0860ca;
 }

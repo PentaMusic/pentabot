@@ -1,16 +1,53 @@
 import express from 'express';
 import multer from 'multer';
 import { requireAuth } from '../middleware/auth.js';
-import supabase from '../database/supabase.js';
+import supabase, { supabaseService } from '../database/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
+
+// Helper function to fix filename encoding
+function fixFilenameEncoding(filename) {
+  if (/[áàâäãåāăą]/.test(filename)) {
+    return Buffer.from(filename, 'latin1').toString('utf8');
+  }
+  return filename;
+}
+
+// Helper function to sanitize filename
+function sanitizeFilename(filename) {
+  // Remove or replace dangerous characters for filesystem
+  return filename
+    .replace(/[<>:"/\\|?*]/g, '_')  // Replace dangerous chars with underscore
+    .replace(/\.\./g, '_')          // Prevent directory traversal
+    .replace(/^\.+/, '')            // Remove leading dots
+    .slice(0, 255);                 // Limit length to 255 chars
+}
 
 // Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 100 * 1024 * 1024 // 100MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    try {
+      console.log('Processing file:', file.originalname);
+      
+      // Fix filename encoding using the new helper function
+      const fixedName = fixFilenameEncoding(file.originalname);
+      
+      // Sanitize the filename
+      const sanitizedName = sanitizeFilename(fixedName);
+      
+      // Update the file object
+      file.originalname = sanitizedName;
+      console.log('Final processed filename:', sanitizedName);
+      
+    } catch (error) {
+      console.log('File processing error:', error.message);
+    }
+    cb(null, true);
   }
 });
 
@@ -64,7 +101,7 @@ router.get('/folders/:folderId/children', requireAuth, async (req, res) => {
     
     const { data: children, error } = await supabase
       .rpc('get_folder_children', { 
-        folder_id: folderId, 
+        p_folder_id: folderId, 
         include_files: includeFiles 
       });
     
@@ -113,9 +150,9 @@ router.post('/folders', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Folder name is required' });
     }
     
-    // Validate folder name (no special characters that could break paths)
-    if (!/^[a-zA-Z0-9가-힣\s\-_()]+$/.test(name)) {
-      return res.status(400).json({ error: 'Invalid folder name' });
+    // Validate folder name (allow most characters except path-breaking ones)
+    if (/[\/\\:*?"<>|]/.test(name)) {
+      return res.status(400).json({ error: 'Folder name cannot contain: / \\ : * ? " < > |' });
     }
     
     let folderData = {
@@ -154,7 +191,7 @@ router.post('/folders', requireAuth, async (req, res) => {
   }
 });
 
-// Upload files to a folder
+// Upload files to a folder with fallback filename handling
 router.post('/folders/:folderId/upload', requireAuth, upload.array('files', 10), async (req, res) => {
   try {
     const userId = req.user.id;
@@ -180,13 +217,15 @@ router.post('/folders/:folderId/upload', requireAuth, upload.array('files', 10),
     
     for (const file of files) {
       try {
-        // Generate unique filename
-        const fileExtension = file.originalname.split('.').pop();
+        // Use original filename as display name
+        const displayName = file.originalname;
+        const fileExtension = file.originalname.split('.').pop() || 'bin';
+        
         const storedName = `${uuidv4()}.${fileExtension}`;
         const storagePath = `knowledge-base/${folder.access_level}/${storedName}`;
         
-        // Upload to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        // Upload to Supabase Storage using service client to bypass RLS
+        const { data: uploadData, error: uploadError } = await supabaseService.storage
           .from('knowledge-base')
           .upload(storagePath, file.buffer, {
             contentType: file.mimetype,
@@ -198,11 +237,11 @@ router.post('/folders/:folderId/upload', requireAuth, upload.array('files', 10),
           continue;
         }
         
-        // Save file record to database
+        // Save file record to database with cleaned display name
         const { data: fileRecord, error: dbError } = await supabase
           .from('knowledge_files')
           .insert({
-            original_name: file.originalname,
+            original_name: displayName, // Use cleaned name instead of corrupted original
             stored_name: storedName,
             mime_type: file.mimetype,
             file_size: file.size,
@@ -217,8 +256,8 @@ router.post('/folders/:folderId/upload', requireAuth, upload.array('files', 10),
         
         if (dbError) {
           console.error('Database insert error:', dbError);
-          // Clean up uploaded file
-          await supabase.storage
+          // Clean up uploaded file using service client
+          await supabaseService.storage
             .from('knowledge-base')
             .remove([storagePath]);
           continue;
@@ -253,17 +292,32 @@ router.get('/files/:fileId/download', requireAuth, async (req, res) => {
       .single();
     
     if (fileError || !file) {
+      console.error('File not found:', fileError);
       return res.status(404).json({ error: 'File not found' });
     }
     
-    // Get signed URL from storage
-    const { data: signedUrl, error: urlError } = await supabase.storage
+    console.log('File found:', { id: file.id, storage_path: file.storage_path });
+    
+    // Get signed URL from storage using service client
+    const { data: signedUrl, error: urlError } = await supabaseService.storage
       .from('knowledge-base')
       .createSignedUrl(file.storage_path, 60); // 1 minute expiry
     
     if (urlError) {
-      console.error('Error creating signed URL:', urlError);
-      return res.status(500).json({ error: 'Failed to generate download link' });
+      console.error('Error creating signed URL:', {
+        error: urlError,
+        storage_path: file.storage_path,
+        bucket: 'knowledge-base'
+      });
+      return res.status(500).json({ 
+        error: 'Failed to generate download link',
+        details: urlError.message 
+      });
+    }
+    
+    if (!signedUrl || !signedUrl.signedUrl) {
+      console.error('No signed URL returned:', signedUrl);
+      return res.status(500).json({ error: 'Failed to generate download link - no URL returned' });
     }
     
     // Update download count
@@ -272,9 +326,16 @@ router.get('/files/:fileId/download', requireAuth, async (req, res) => {
       .update({ download_count: file.download_count + 1 })
       .eq('id', fileId);
     
+    // Set proper headers for Korean filename support  
+    res.setHeader('Content-Disposition', 
+      `attachment; filename="${file.original_name}"; filename*=UTF-8''${encodeURIComponent(file.original_name)}`
+    );
+    
     res.json({ 
       downloadUrl: signedUrl.signedUrl,
-      filename: file.original_name 
+      filename: file.original_name,
+      // Ensure proper encoding for Korean filenames
+      encodedFilename: encodeURIComponent(file.original_name)
     });
   } catch (error) {
     console.error('Error in GET /files/:fileId/download:', error);
@@ -300,8 +361,8 @@ router.delete('/files/:fileId', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'File not found or access denied' });
     }
     
-    // Delete from storage
-    const { error: storageError } = await supabase.storage
+    // Delete from storage using service client
+    const { error: storageError } = await supabaseService.storage
       .from('knowledge-base')
       .remove([file.storage_path]);
     
@@ -353,10 +414,10 @@ router.delete('/folders/:folderId', requireAuth, async (req, res) => {
       .select('storage_path')
       .eq('folder_id', folderId);
     
-    // Delete files from storage
+    // Delete files from storage using service client
     if (filesToDelete && filesToDelete.length > 0) {
       const storagePaths = filesToDelete.map(f => f.storage_path);
-      await supabase.storage
+      await supabaseService.storage
         .from('knowledge-base')
         .remove(storagePaths);
     }
@@ -391,22 +452,23 @@ router.patch('/files/:fileId', requireAuth, async (req, res) => {
     if (original_name) updates.original_name = original_name;
     if (tags) updates.tags = tags;
     
-    const { data: file, error } = await supabase
+    const { data: files, error } = await supabase
       .from('knowledge_files')
       .update(updates)
       .eq('id', fileId)
       .eq('owner_id', userId)
-      .select()
-      .single();
+      .select();
     
     if (error) {
       console.error('Error updating file:', error);
       return res.status(500).json({ error: 'Failed to update file' });
     }
     
-    if (!file) {
+    if (!files || files.length === 0) {
       return res.status(404).json({ error: 'File not found or access denied' });
     }
+    
+    const file = files[0];
     
     res.json({ file });
   } catch (error) {
@@ -426,27 +488,124 @@ router.patch('/folders/:folderId', requireAuth, async (req, res) => {
     if (name) updates.name = name;
     if (description !== undefined) updates.description = description;
     
-    const { data: folder, error } = await supabase
+    const { data: folders, error } = await supabase
       .from('knowledge_folders')
       .update(updates)
       .eq('id', folderId)
       .eq('owner_id', userId)
       .eq('is_system_folder', false) // Can't rename system folders
-      .select()
-      .single();
+      .select();
     
     if (error) {
       console.error('Error updating folder:', error);
       return res.status(500).json({ error: 'Failed to update folder' });
     }
     
-    if (!folder) {
+    if (!folders || folders.length === 0) {
       return res.status(404).json({ error: 'Folder not found or cannot be modified' });
     }
+    
+    const folder = folders[0];
     
     res.json({ folder });
   } catch (error) {
     console.error('Error in PATCH /folders/:folderId:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Move files to different folder
+router.patch('/files/move', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { fileIds, targetFolderId } = req.body;
+    
+    console.log('=== FILE MOVE REQUEST ===');
+    console.log('User ID:', userId);
+    console.log('File IDs:', fileIds);
+    console.log('Target Folder ID:', targetFolderId);
+    
+    if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+      console.log('Error: File IDs are required');
+      return res.status(400).json({ error: 'File IDs are required' });
+    }
+    
+    if (!targetFolderId) {
+      console.log('Error: Target folder ID is required');
+      return res.status(400).json({ error: 'Target folder ID is required' });
+    }
+    
+    // Verify target folder exists and user has access
+    const { data: targetFolder, error: folderError } = await supabaseService
+      .from('knowledge_folders')
+      .select('*')
+      .eq('id', targetFolderId)
+      .single();
+    
+    if (folderError || !targetFolder) {
+      return res.status(404).json({ error: 'Target folder not found' });
+    }
+    
+    // First, check if files exist and user has access
+    const { data: existingFiles, error: checkError } = await supabaseService
+      .from('knowledge_files')
+      .select('id, original_name, owner_id')
+      .in('id', fileIds);
+    
+    if (checkError) {
+      console.error('Error checking files:', checkError);
+      return res.status(500).json({ error: 'Failed to check files' });
+    }
+    
+    console.log('File move request:', { fileIds, userId, existingFiles: existingFiles?.length });
+    console.log('Existing files details:', existingFiles);
+    
+    if (!existingFiles || existingFiles.length === 0) {
+      console.log('Error: No files found in database');
+      return res.status(404).json({ error: 'File not found or access denied' });
+    }
+    
+    // Check ownership
+    const ownedFiles = existingFiles.filter(f => f.owner_id === userId);
+    console.log('Owned files:', ownedFiles?.length, 'out of', existingFiles?.length);
+    console.log('Owned files details:', ownedFiles);
+    
+    if (ownedFiles.length === 0) {
+      console.log('Error: Access denied - no owned files');
+      return res.status(403).json({ error: 'Access denied - you can only move your own files' });
+    }
+    
+    if (ownedFiles.length < fileIds.length) {
+      console.log(`Warning: User ${userId} tried to move ${fileIds.length} files but only owns ${ownedFiles.length}`);
+    }
+    
+    // Move only the owned files
+    const ownedFileIds = ownedFiles.map(f => f.id);
+    const { data: movedFiles, error: moveError } = await supabaseService
+      .from('knowledge_files')
+      .update({ 
+        folder_id: targetFolderId,
+        access_level: targetFolder.access_level,
+        organization_id: targetFolder.organization_id
+      })
+      .in('id', ownedFileIds)
+      .select();
+    
+    if (moveError) {
+      console.error('Error moving files:', moveError);
+      return res.status(500).json({ error: 'Failed to move files' });
+    }
+    
+    if (!movedFiles || movedFiles.length === 0) {
+      return res.status(500).json({ error: 'Move operation failed' });
+    }
+    
+    res.json({ 
+      message: `${movedFiles.length} files moved successfully`,
+      files: movedFiles 
+    });
+  } catch (error) {
+    console.error('Error in PATCH /files/move:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

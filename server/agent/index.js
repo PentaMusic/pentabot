@@ -49,7 +49,16 @@ const port = 3001;
 
 // 미들웨어 설정
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: '*' }));
+
+// Set charset for proper Korean character handling
+app.use((req, res, next) => {
+  res.charset = 'utf-8';
+  // Set proper headers for Korean filename support
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Disposition');
+  next();
+});
 
 // 기본 엔드포인트
 app.get('/', (req, res) => {
