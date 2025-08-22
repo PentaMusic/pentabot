@@ -22,11 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-<<<<<<< Updated upstream
-=======
 
 .vite/
 .env
 .env.local
 .env.development
->>>>>>> Stashed changes
+
