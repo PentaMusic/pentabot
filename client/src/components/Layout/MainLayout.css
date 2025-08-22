@@ -1,0 +1,63 @@
+.main-layout {
+  display: flex;
+  height: 100vh;
+  background: #0f0f0f;
+  position: relative;
+}
+
+.sidebar-container {
+  width: 260px;
+  background: #171717;
+  border-right: 1px solid #2d2d2d;
+  flex-shrink: 0;
+  transition: width 0.2s ease;
+  overflow: hidden;
+}
+
+.sidebar-container.closed {
+  width: 50px;
+}
+
+.sidebar-container.closed .sidebar {
+  width: 50px;
+}
+
+.sidebar-container.closed .new-chat-btn,
+.sidebar-container.closed .sidebar-content,
+.sidebar-container.closed .sidebar-footer {
+  display: none;
+}
+
+.chat-container-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 800px 이상: 기본 열림, 800px 미만: 기본 닫힘 */
+@media (max-width: 800px) {
+  .sidebar-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1000;
+    width: 260px;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .sidebar-container.open {
+    transform: translateX(0);
+  }
+  
+  .sidebar-container.closed {
+    width: 260px;
+    transform: translateX(-100%);
+  }
+
+  .chat-container-main {
+    width: 100%;
+  }
+}

@@ -9,6 +9,7 @@ backend:
     packageManager: npm
   environment:
     EXECUTOR_URL: ${{backend.functions.executor.url}}
+    GENEZIO_EXECUTOR_URL: ${{backend.functions.executor.url}}
   functions:
     - name: agent
       path: agent
