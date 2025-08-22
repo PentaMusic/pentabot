@@ -5,7 +5,7 @@ import supabase, { supabaseService } from '../database/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
-
+console.log("router", router);
 // Helper function to fix filename encoding
 function fixFilenameEncoding(filename) {
   if (/[áàâäãåāăą]/.test(filename)) {
@@ -326,11 +326,6 @@ router.get('/files/:fileId/download', requireAuth, async (req, res) => {
       .update({ download_count: file.download_count + 1 })
       .eq('id', fileId);
     
-    // Set proper headers for Korean filename support  
-    res.setHeader('Content-Disposition', 
-      `attachment; filename="${file.original_name}"; filename*=UTF-8''${encodeURIComponent(file.original_name)}`
-    );
-    
     res.json({ 
       downloadUrl: signedUrl.signedUrl,
       filename: file.original_name,
@@ -515,8 +510,11 @@ router.patch('/folders/:folderId', requireAuth, async (req, res) => {
 });
 
 // Move files to different folder
-router.patch('/files/move', requireAuth, async (req, res) => {
+router.post('/files/move', requireAuth, async (req, res) => {
+  console.log("here");
   try {
+    console.log("herererere!!");
+    console.log(req.body);
     const userId = req.user.id;
     const { fileIds, targetFolderId } = req.body;
     
@@ -605,7 +603,7 @@ router.patch('/files/move', requireAuth, async (req, res) => {
       files: movedFiles 
     });
   } catch (error) {
-    console.error('Error in PATCH /files/move:', error);
+    console.error('Error in PoSTED /files/move:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

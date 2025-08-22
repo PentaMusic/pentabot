@@ -4,6 +4,7 @@
   flex-direction: column;
   background: #0d1117;
   color: #f0f6fc;
+  width: 100%;
 }
 
 .knowledge-header {
@@ -13,6 +14,8 @@
   padding: 16px 24px;
   border-bottom: 1px solid #2d2d2d;
   background: #171717;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .back-btn {
@@ -270,9 +273,20 @@
   gap: 4px;
 }
 
+.folder-name-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .folder-name {
   font-weight: 500;
   font-size: 14px;
+}
+
+.system-folder-lock {
+  color: #8b949e;
+  opacity: 0.7;
 }
 
 .folder-name-input {
@@ -323,6 +337,8 @@
   overflow: hidden;
   padding: 20px;
   position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .files-area.dragging {
@@ -438,6 +454,9 @@
   justify-content: center;
   color: #8e8ea0;
   text-align: center;
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
 }
 
 .empty-state p {
@@ -446,9 +465,39 @@
 
 .files-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 16px;
   overflow-y: auto;
+  width: 100%;
+}
+
+.files-grid .file-item {
+  align-self: stretch;
+}
+
+/* Responsive grid - maximum 4 columns */
+@media (min-width: 1200px) {
+  .files-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 1199px) and (min-width: 900px) {
+  .files-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 899px) and (min-width: 600px) {
+  .files-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 599px) {
+  .files-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .files-list {
@@ -456,6 +505,7 @@
   flex-direction: column;
   gap: 8px;
   overflow-y: auto;
+  width: 100%;
 }
 
 .file-item {
@@ -467,6 +517,8 @@
   border: 1px solid #2d2d2d;
   border-radius: 8px;
   transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .file-item:hover {
@@ -845,6 +897,64 @@
   cursor: not-allowed;
 }
 
+/* Tree structure styles for move modal */
+.folder-tree-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.folder-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  min-height: 32px;
+}
+
+.folder-tree-item:hover:not(.disabled) {
+  background: #30363d;
+}
+
+.folder-tree-item.selected {
+  background: rgba(9, 105, 218, 0.1);
+  border-color: #0969da;
+}
+
+.folder-tree-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.folder-tree-item .folder-name {
+  color: #f0f6fc;
+  font-size: 14px;
+  flex: 1;
+}
+
+.folder-tree-item .current-folder {
+  font-size: 12px;
+  color: #8b949e;
+  font-style: italic;
+  margin-left: auto;
+}
+
+.folder-tree-item .access-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.folder-tree-item .system-folder-lock {
+  color: #8b949e;
+  opacity: 0.7;
+}
+
 .folder-list .folder-icon {
   font-size: 16px;
 }
@@ -920,4 +1030,43 @@
 .move-selected-btn:hover {
   background: #0860ca;
   border-color: #0860ca;
+}
+
+/* Custom scrollbar styling for minimal design */
+.folders-list::-webkit-scrollbar,
+.files-grid::-webkit-scrollbar,
+.files-list::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.folders-list::-webkit-scrollbar-track,
+.files-grid::-webkit-scrollbar-track,
+.files-list::-webkit-scrollbar-track,
+.modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.folders-list::-webkit-scrollbar-thumb,
+.files-grid::-webkit-scrollbar-thumb,
+.files-list::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 3px;
+  opacity: 0.5;
+}
+
+.folders-list::-webkit-scrollbar-thumb:hover,
+.files-grid::-webkit-scrollbar-thumb:hover,
+.files-list::-webkit-scrollbar-thumb:hover,
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: #565656;
+}
+
+.folders-list::-webkit-scrollbar-corner,
+.files-grid::-webkit-scrollbar-corner,
+.files-list::-webkit-scrollbar-corner,
+.modal-body::-webkit-scrollbar-corner {
+  background: transparent;
 }
