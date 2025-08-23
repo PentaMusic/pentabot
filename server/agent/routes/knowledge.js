@@ -5,7 +5,6 @@ import supabase, { supabaseService } from '../database/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
-console.log("router", router);
 // Helper function to fix filename encoding
 function fixFilenameEncoding(filename) {
   if (/[áàâäãåāăą]/.test(filename)) {

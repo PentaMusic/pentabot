@@ -45,10 +45,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   const fetchThreads = useCallback(async () => {
     if (!user || !token) {
       setThreads([]);
+      setIsLoadingThreads(false);
       return;
     }
 
-    setIsLoadingThreads(true);
+    // 첫 로드가 아닌 경우 로딩 상태를 표시하지 않음
+    const isFirstLoad = threads.length === 0;
+    if (isFirstLoad) {
+      setIsLoadingThreads(true);
+    }
+
     try {
       const apiUrl = import.meta.env.VITE_API_URL;
       const response = await fetch(`${apiUrl}/threads`, {
@@ -61,13 +67,22 @@ const Sidebar: React.FC<SidebarProps> = ({
       if (response.ok) {
         const data = await response.json();
         const threadsList = data.threads || [];
-        setThreads(threadsList);
+        
+        // 이전 데이터와 비교하여 변경된 경우에만 업데이트
+        setThreads(prevThreads => {
+          if (JSON.stringify(prevThreads) === JSON.stringify(threadsList)) {
+            return prevThreads;
+          }
+          return threadsList;
+        });
         
         // 최근 사용한 스레드 자동 선택 (첫 번째가 가장 최근)
         if (threadsList.length > 0 && !currentThreadId) {
           const mostRecentThread = threadsList[0];
-          onThreadSelect(mostRecentThread.id);
-          onThreadCreated?.(mostRecentThread.id);
+          setTimeout(() => {
+            onThreadSelect(mostRecentThread.id);
+            onThreadCreated?.(mostRecentThread.id);
+          }, 0);
         }
       } else {
         if (response.status === 401) {
@@ -76,15 +91,21 @@ const Sidebar: React.FC<SidebarProps> = ({
           return;
         }
         console.error('Failed to fetch threads:', response.status);
-        setThreads([]);
+        if (isFirstLoad) {
+          setThreads([]);
+        }
       }
     } catch (error) {
       console.error('Error fetching threads:', error);
-      setThreads([]);
+      if (isFirstLoad) {
+        setThreads([]);
+      }
     } finally {
-      setIsLoadingThreads(false);
+      if (isFirstLoad) {
+        setIsLoadingThreads(false);
+      }
     }
-  }, [user, token, currentThreadId, onThreadSelect, onThreadCreated]);
+  }, [user, token]);
 
   // 새로운 thread 생성 함수
   const createNewThread = async () => {
@@ -250,7 +271,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   // 사용자 로그인 상태 변경시 threads 다시 가져오기
   useEffect(() => {
     fetchThreads();
-  }, [fetchThreads]);
+  }, [user, token]);
 
   // New Chat 버튼 핸들러 업데이트
   const handleNewChat = () => {
@@ -326,7 +347,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <span>Your conversations will appear here</span>
               </div>
             </div>
-          ) : isLoadingThreads ? (
+          ) : isLoadingThreads && threads.length === 0 ? (
             <div className="loading-threads">
               <div className="loading-message">
                 <div className="loading-spinner">
