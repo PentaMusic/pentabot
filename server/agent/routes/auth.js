@@ -1,5 +1,5 @@
 import express from 'express';
-import { signUp, signIn, signOut, getCurrentUser, updateUserProfile, verifyToken, refreshAccessToken } from "../database/auth.js";
+import { signUp, signIn, signOut, getCurrentUser, updateUserProfile, verifyToken, refreshAccessToken, requestPasswordReset, updatePassword } from "../database/auth.js";
 
 const router = express.Router();
 
@@ -116,6 +116,49 @@ router.post("/refresh", async (req, res) => {
     });
   } else {
     res.status(401).json({ error: result.error });
+  }
+});
+
+// 비밀번호 재설정 요청
+router.post("/requestPasswordReset", async (req, res) => {
+  const {email, redirectTo} = req.body;
+  
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  const result = await requestPasswordReset(email, redirectTo);
+  
+  console.log("Password reset request result:", result);
+
+  if (result.success) {
+    res.json({ message: "Password reset email sent. Please check your inbox." });
+  } else {
+    res.status(400).json({ error: result.error });
+  }
+});
+
+// 비밀번호 업데이트
+router.post("/updatePassword", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: "Authorization token required" });
+  }
+
+  const { password, refreshToken } = req.body;
+  
+  if (!password) {
+    return res.status(400).json({ error: "Password is required" });
+  }
+
+  const token = authHeader.substring(7);
+  const result = await updatePassword(token, password, refreshToken);
+  
+  if (result.success) {
+    res.json({ message: "Password updated successfully" });
+  } else {
+    res.status(400).json({ error: result.error });
   }
 });
 
