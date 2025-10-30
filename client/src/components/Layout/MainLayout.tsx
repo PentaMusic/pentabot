@@ -60,12 +60,16 @@ const MainLayout: React.FC = () => {
     setCurrentView('chat');
   };
 
+  const handleSignOut = () => {
+    setCurrentThreadId(null);
+  };
+
   return (
     <div className="main-layout">
       {currentView === 'chat' && (
         <>
           <div className={`sidebar-container ${isSidebarOpen ? 'open' : 'closed'}`}>
-            <Sidebar 
+            <Sidebar
               isOpen={isSidebarOpen}
               onToggle={toggleSidebar}
               onThreadSelect={handleThreadSelect}
@@ -74,6 +78,7 @@ const MainLayout: React.FC = () => {
               onThreadCreated={handleThreadCreated}
               onOpenProfileModal={handleOpenProfileModal}
               onNavigateToKnowledge={handleNavigateToKnowledge}
+              onSignOut={handleSignOut}
             />
           </div>
           

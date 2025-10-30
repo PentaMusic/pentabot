@@ -19,6 +19,7 @@ interface SidebarProps {
   onThreadCreated?: (threadId: string) => void;
   onOpenProfileModal?: () => void;
   onNavigateToKnowledge?: () => void;
+  onSignOut?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -29,7 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   currentThreadId,
   onThreadCreated,
   onOpenProfileModal,
-  onNavigateToKnowledge
+  onNavigateToKnowledge,
+  onSignOut
 }) => {
   const { user, token, signOut } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -421,10 +423,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <SettingsIcon />
                   개인정보 설정
                 </button>
-                <button 
+                <button
                   className="user-menu-item"
                   onClick={() => {
                     signOut();
+                    onSignOut?.();
                     setIsUserMenuOpen(false);
                   }}
                 >
