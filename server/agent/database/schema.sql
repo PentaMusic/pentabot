@@ -1,3 +1,6 @@
+-- Create user_type enum
+CREATE TYPE user_type_enum AS ENUM ('user', 'admin');
+
 -- Create users table (extends Supabase auth.users)
 CREATE TABLE public.users (
     id UUID REFERENCES auth.users(id) PRIMARY KEY,
@@ -7,6 +10,7 @@ CREATE TABLE public.users (
     company_name TEXT,
     position_title TEXT,
     nickname TEXT,
+    user_type user_type_enum NOT NULL DEFAULT 'user',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -81,6 +85,7 @@ CREATE TABLE public.usage_history (
 );
 
 -- Create indexes for performance
+CREATE INDEX idx_users_user_type ON public.users(user_type);
 CREATE INDEX idx_organizations_name ON public.organizations(name);
 CREATE INDEX idx_user_organizations_user_id ON public.user_organizations(user_id);
 CREATE INDEX idx_user_organizations_organization_id ON public.user_organizations(organization_id);

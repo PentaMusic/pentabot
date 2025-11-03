@@ -2,6 +2,10 @@ export interface User {
   id: string;
   email: string;
   display_name?: string;
+  nickname?: string;
+  company_name?: string;
+  position_title?: string;
+  user_type: 'user' | 'admin';
 }
 
 export interface AuthContextType {

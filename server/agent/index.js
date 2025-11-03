@@ -43,6 +43,7 @@ import usageRoutes from './routes/usage.js';
 import generateRoutes from './routes/generate.js';
 import profileRoutes from './routes/profile.js';
 import knowledgeRoutes from './routes/knowledge.js';
+import adminRoutes from './routes/admin.js';
 
 const app = express();
 const port = 3001;
@@ -97,6 +98,7 @@ app.get('/', (req, res) => {
             generate: '/generate/*',
             profile: '/profile/*',
             knowledge: '/knowledge/*',
+            admin: '/admin/*',
         },
     });
 });
@@ -109,6 +111,7 @@ app.use('/usage', usageRoutes);
 app.use('/generate', generateRoutes);
 app.use('/profile', profileRoutes);
 app.use('/knowledge', knowledgeRoutes);
+app.use('/admin', adminRoutes);
 
 // 에러 핸들링 미들웨어
 app.use((err, req, res, next) => {

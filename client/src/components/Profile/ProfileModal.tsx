@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { CloseIcon, SettingsIcon } from '../icons/Icons';
 import './ProfileModal.css';
 
@@ -22,10 +23,12 @@ interface UserProfile {
 interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onProfileUpdated?: () => void;
 }
 
-const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
-  const { token } = useAuth();
+const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onProfileUpdated }) => {
+  const { token, user } = useAuth();
+  const { setUser } = useAuthStore();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [availableOrganizations, setAvailableOrganizations] = useState<Organization[]>([]);
   const [selectedOrganizations, setSelectedOrganizations] = useState<string[]>([]);
@@ -155,6 +158,19 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
 
       const updatedProfile = await response.json();
       setUserProfile(updatedProfile.user);
+
+      // AuthStore의 user 정보 업데이트
+      if (user) {
+        setUser({
+          ...user,
+          display_name: updatedProfile.user.display_name,
+          nickname: updatedProfile.user.nickname,
+          company_name: updatedProfile.user.company_name,
+          position_title: updatedProfile.user.position_title,
+        });
+      }
+
+      onProfileUpdated?.(); // 프로필 업데이트 콜백 호출
       onClose();
     } catch (error) {
       console.error('Error updating profile:', error);
