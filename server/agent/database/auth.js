@@ -55,7 +55,29 @@ export const getCurrentUser = async (accessToken) => {
         const { data: { user }, error } = await supabase.auth.getUser(accessToken);
         if (error) throw error;
 
-        return { success: true, user };
+        // public.users 테이블에서 user_type 등 추가 정보 가져오기
+        const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('user_type, display_name, nickname, company_name, position_title')
+            .eq('id', user.id)
+            .single();
+
+        if (profileError) {
+            console.warn('Profile not found for user:', user.id);
+            return { success: true, user: { ...user, user_type: 'user' } };
+        }
+
+        // Supabase auth user와 profile 정보 병합
+        const enhancedUser = {
+            ...user,
+            user_type: profile.user_type || 'user',
+            display_name: profile.display_name,
+            nickname: profile.nickname,
+            company_name: profile.company_name,
+            position_title: profile.position_title
+        };
+
+        return { success: true, user: enhancedUser };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -79,13 +101,36 @@ export const updateUserProfile = async (userId, updates) => {
     }
 };
 
-// JWT 토큰 검증
+// JWT 토큰 검증 및 사용자 프로필 정보 조회
 export const verifyToken = async (token) => {
     try {
         const { data: { user }, error } = await supabase.auth.getUser(token);
         if (error) throw error;
 
-        return { success: true, user };
+        // public.users 테이블에서 user_type 등 추가 정보 가져오기
+        const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('user_type, display_name, nickname, company_name, position_title')
+            .eq('id', user.id)
+            .single();
+
+        if (profileError) {
+            console.warn('Profile not found for user:', user.id);
+            // 프로필이 없어도 기본 user 정보는 반환
+            return { success: true, user: { ...user, user_type: 'user' } };
+        }
+
+        // Supabase auth user와 profile 정보 병합
+        const enhancedUser = {
+            ...user,
+            user_type: profile.user_type || 'user',
+            display_name: profile.display_name,
+            nickname: profile.nickname,
+            company_name: profile.company_name,
+            position_title: profile.position_title
+        };
+
+        return { success: true, user: enhancedUser };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -97,11 +142,46 @@ export const refreshAccessToken = async (refreshToken) => {
         const { data, error } = await supabase.auth.refreshSession({
             refresh_token: refreshToken
         });
-
         if (error) throw error;
-
         return { success: true, session: data.session };
     } catch (error) {
         return { success: false, error: error.message };
     }
 };
+// 패스워드 변경요청
+export const requestPasswordReset = async (email, redirectTo) => {
+    try {
+        console.log('Requesting password reset for email:', email);
+        console.log('Redirect URL:', `${redirectTo}/reset-password`);
+        const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${redirectTo}/reset-password`
+        });
+        if (error) throw error;
+        return { success: true, data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+// 패스워드 변경
+export const updatePassword = async (accessToken, newPassword, refreshToken) => {
+    try {
+        // Set the session with the provided tokens to authenticate the user
+        const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+        });
+        
+        if (sessionError) throw sessionError;
+
+        // Update the user's password
+        const { data, error } = await supabase.auth.updateUser({
+            password: newPassword
+        });
+        
+        if (error) throw error;
+        
+        return { success: true, user: data.user };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}

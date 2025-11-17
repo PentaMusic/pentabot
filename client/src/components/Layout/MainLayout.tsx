@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import ChatArea from './ChatArea';
 import ProfileModal from '../Profile/ProfileModal';
+import UsageStatsModal from '../UsageStats/UsageStatsModal';
 import KnowledgeBase from '../KnowledgeBase/KnowledgeBase';
 import './MainLayout.css';
 
 const MainLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isUsageStatsModalOpen, setIsUsageStatsModalOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'chat' | 'knowledge'>('chat');
 
   // Initialize sidebar state based on screen width
@@ -52,6 +54,18 @@ const MainLayout: React.FC = () => {
     setIsProfileModalOpen(false);
   };
 
+  const handleProfileUpdated = () => {
+    // 프로필 업데이트 시 Sidebar는 자동으로 새로고침됨 (fetchUserProfile의 user/token 의존성)
+  };
+
+  const handleOpenUsageStatsModal = () => {
+    setIsUsageStatsModalOpen(true);
+  };
+
+  const handleCloseUsageStatsModal = () => {
+    setIsUsageStatsModalOpen(false);
+  };
+
   const handleNavigateToKnowledge = () => {
     setCurrentView('knowledge');
   };
@@ -60,12 +74,16 @@ const MainLayout: React.FC = () => {
     setCurrentView('chat');
   };
 
+  const handleSignOut = () => {
+    setCurrentThreadId(null);
+  };
+
   return (
     <div className="main-layout">
       {currentView === 'chat' && (
         <>
           <div className={`sidebar-container ${isSidebarOpen ? 'open' : 'closed'}`}>
-            <Sidebar 
+            <Sidebar
               isOpen={isSidebarOpen}
               onToggle={toggleSidebar}
               onThreadSelect={handleThreadSelect}
@@ -73,7 +91,9 @@ const MainLayout: React.FC = () => {
               currentThreadId={currentThreadId}
               onThreadCreated={handleThreadCreated}
               onOpenProfileModal={handleOpenProfileModal}
+              onOpenUsageStatsModal={handleOpenUsageStatsModal}
               onNavigateToKnowledge={handleNavigateToKnowledge}
+              onSignOut={handleSignOut}
             />
           </div>
           
@@ -92,9 +112,15 @@ const MainLayout: React.FC = () => {
         <KnowledgeBase onBackToChat={handleBackToChat} />
       )}
 
-      <ProfileModal 
+      <ProfileModal
         isOpen={isProfileModalOpen}
         onClose={handleCloseProfileModal}
+        onProfileUpdated={handleProfileUpdated}
+      />
+
+      <UsageStatsModal
+        isOpen={isUsageStatsModalOpen}
+        onClose={handleCloseUsageStatsModal}
       />
     </div>
   );

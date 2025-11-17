@@ -208,6 +208,14 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     }
   }, [threadId, user, token]);
 
+  // Sign out 시 메시지 초기화
+  useEffect(() => {
+    if (!user) {
+      setMessages([]);
+      setCurrentThreadId(null);
+    }
+  }, [user]);
+
   // 새로운 thread 생성 함수
   const createNewThread = async (title: string = 'New Chat') => {
     console.log('createNewThread called:', { user: !!user, token: !!token, tokenLength: token?.length });

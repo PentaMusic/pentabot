@@ -2,6 +2,10 @@ export interface User {
   id: string;
   email: string;
   display_name?: string;
+  nickname?: string;
+  company_name?: string;
+  position_title?: string;
+  user_type: 'user' | 'admin';
 }
 
 export interface AuthContextType {
@@ -11,4 +15,6 @@ export interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => void;
+  resetPassword: (email: string, redirectTo: string) => Promise<{ success: boolean; error?: string }>;
+  updatePassword: (password: string, accessToken: string, refreshToken?: string) => Promise<{ success: boolean; error?: string }>;
 }

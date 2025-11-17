@@ -10,9 +10,11 @@ export const useAuth = (): AuthContextType => {
     isLoading, 
     signIn, 
     signUp, 
-    signOut, 
+    signOut,
     validateToken,
-    setLoading 
+    setLoading,
+    resetPassword,
+    updatePassword
   } = useAuthStore();
   
   useSessionChecker();
@@ -33,5 +35,7 @@ export const useAuth = (): AuthContextType => {
     signIn,
     signUp,
     signOut,
+    resetPassword,
+    updatePassword,
   };
 };
