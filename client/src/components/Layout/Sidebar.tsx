@@ -221,8 +221,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             });
 
             if (response.ok) {
-                await response.json();
-                setThreads((prev) => prev.map((t) => (t.id === threadId ? { ...t, title: editingTitle.trim() } : t)));
+                const data = await response.json();
+                setThreads((prev) => prev.map((t) => (t.id === threadId ? { ...t, title: editingTitle.trim(), updated_at: data.thread.updated_at } : t)));
                 console.log('Thread title updated successfully');
             } else {
                 const errorData = await response.text();
@@ -293,8 +293,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         }
     }, [user, token]);
 
-    // 검색된 스레드 필터링
-    const filteredThreads = threads.filter((thread) => thread.title.toLowerCase().includes(searchQuery.toLowerCase()));
+    // 검색된 스레드 필터링 및 정렬 (updated_at 기준 내림차순)
+    const filteredThreads = threads
+        .filter((thread) => thread.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
     // 사용자 로그인 상태 변경시 threads 다시 가져오기
     useEffect(() => {
